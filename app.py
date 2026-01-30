@@ -94,22 +94,37 @@ import sys
 
 @app.route('/api/debug', methods=['GET'])
 def debug_config():
-    test_result = "Not tested"
+    internal_test = "Not tested"
+    indexers_found = []
+    
+    # Try to reach Jackett internally
     try:
-        # Quick test to see if we can reach Jackett internally
+        # Test 1: Connectivity
         resp = requests.get(
-            "http://jackett:9117/api/v2.0/indexers/all/results?apikey=" + (JACKETT_API_KEY or ""), 
+            f"http://jackett:9117/api/v2.0/indexers/all/results?apikey={JACKETT_API_KEY or ''}&Query=test", 
             headers={'User-Agent': 'Mozilla/5.0'},
-            timeout=5
+            timeout=5, verify=False
         )
-        test_result = f"Connected (Status: {resp.status_code})"
+        internal_test = f"Connected (Status: {resp.status_code})"
+        
+        # Test 2: Indexer list
+        idx_resp = requests.get(
+            f"http://jackett:9117/api/v2.0/indexers?apikey={JACKETT_API_KEY or ''}",
+            headers={'User-Agent': 'Mozilla/5.0'},
+            timeout=5, verify=False
+        )
+        if idx_resp.status_code == 200:
+            indexers = idx_resp.json()
+            indexers_found = [i.get('name') for i in indexers if i.get('configured')]
     except Exception as e:
-        test_result = f"Failed: {str(e)}"
+        internal_test = f"Failed: {str(e)}"
 
     return jsonify({
         'jackett_url_env': JACKETT_URL,
         'jackett_key_set': bool(JACKETT_API_KEY),
-        'internal_test': test_result,
+        'internal_test': internal_test,
+        'configured_indexers': indexers_found,
+        'indexers_count': len(indexers_found),
         'pikpak_auth': bool(pikpak_client),
         'server_time': datetime.now().isoformat()
     })
@@ -176,14 +191,15 @@ def search_torrents():
                     'apikey': JACKETT_API_KEY,
                     'Query': query
                 }
+                # Support both Category and Category[] just in case
                 if category and category != 'all' and category != '':
                     params['Category[]'] = category
+                    params['Category'] = category
                     
                 print(f"🔍 Trying Jackett: {url} (query: {query})", file=sys.stderr, flush=True)
                 # verify=False helps with self-signed certs inside docker networks
-                # User-Agent help bypass some blocks
                 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
-                response = requests.get(url, params=params, headers=headers, timeout=20, verify=False)
+                response = requests.get(url, params=params, headers=headers, timeout=25, verify=False)
                 
                 if response.status_code == 200:
                     try:
