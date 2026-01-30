@@ -4,7 +4,7 @@ services:
     environment:
       - PIKPAK_EMAIL=${PIKPAK_EMAIL}
       - PIKPAK_PASSWORD=${PIKPAK_PASSWORD}
-      - JACKETT_URL=http://jackett:9117
+      - JACKETT_URL=${JACKETT_URL}
       - JACKETT_API_KEY=${JACKETT_API_KEY}
       - SECRET_KEY=${SECRET_KEY}
     restart: unless-stopped
