@@ -47,13 +47,16 @@ async def init_pikpak():
         return
     
     try:
-        print(f"🔄 Logging into PikPak as {PIKPAK_EMAIL}...")
+        print(f"🔄 Logging into PikPak as {PIKPAK_EMAIL}...", file=sys.stderr, flush=True)
         client = PikPakApi(username=PIKPAK_EMAIL, password=PIKPAK_PASSWORD)
         await client.login()
         pikpak_client = client
-        print("✅ PikPak Authentication Successful")
+        print("✅ PikPak Authentication Successful", file=sys.stderr, flush=True)
     except Exception as e:
-        print(f"❌ PikPak Login Failed: {str(e)}")
+        print(f"❌ PikPak Login Failed for {PIKPAK_EMAIL}", file=sys.stderr, flush=True)
+        print(f"❌ Error Detail: {str(e)}", file=sys.stderr, flush=True)
+        import traceback
+        traceback.print_exc()
 
 # Initialize on startup
 with app.app_context():
