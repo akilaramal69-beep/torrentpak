@@ -176,21 +176,33 @@ def enrich_results(data):
     tracker_query = "&".join([f"tr={urllib.parse.quote(t)}" for t in PUBLIC_TRACKERS])
     
     for res in results:
-        magnet = res.get('MagnetUri')
+        # Normalize fields
+        jackett_magnet = res.get('MagnetUri')
         link = res.get('Link')
         info_hash = res.get('InfoHash')
         
-        if not magnet and link and link.startswith('magnet:'):
-            magnet = link
-            
-        if magnet:
-            # Add trackers if not present
-            sep = '&' if '?' in magnet else '?'
-            res['MagnetUri'] = f"{magnet}{sep}{tracker_query}"
+        final_magnet = None
+        
+        # 1. Prefer original magnet if it's valid
+        if jackett_magnet and str(jackett_magnet).startswith('magnet:'):
+            final_magnet = jackett_magnet
+        # 2. Check if Link is actually a magnet
+        elif link and str(link).startswith('magnet:'):
+            final_magnet = link
+        # 3. Construct from InfoHash if available
         elif info_hash:
-            # Construct magnet from hash
             name = urllib.parse.quote(res.get('Title', 'download'))
-            res['MagnetUri'] = f"magnet:?xt=urn:btih:{info_hash}&dn={name}&{tracker_query}"
+            final_magnet = f"magnet:?xt=urn:btih:{info_hash}&dn={name}"
+            
+        if final_magnet:
+            # Only add extra trackers if the magnet seems to be missing them
+            if 'tr=' not in final_magnet:
+                sep = '&' if '?' in final_magnet else '?'
+                final_magnet = f"{final_magnet}{sep}{tracker_query}"
+            res['MagnetUri'] = final_magnet
+        else:
+            # Clear it so the frontend knows we don't have a reliable magnet
+            res['MagnetUri'] = None
             
     return data
 
@@ -276,10 +288,15 @@ def add_download():
     magnet_url = data.get('url')
     name = data.get('name')
     
+    print(f"📥 Adding to Cloud: {name}", file=sys.stderr, flush=True)
+    print(f"🔗 URL: {magnet_url[:60]}...", file=sys.stderr, flush=True)
+    
     try:
         result = run_async(pikpak_client.offline_download(file_url=magnet_url, name=name))
+        print(f"✅ PikPak task created: {result.get('task', {}).get('id', 'unknown')}", file=sys.stderr, flush=True)
         return jsonify({'success': True, 'task': result})
     except Exception as e:
+        print(f"❌ PikPak task failed: {str(e)}", file=sys.stderr, flush=True)
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/tasks', methods=['GET'])
