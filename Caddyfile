@@ -1,20 +1,25 @@
 {
-    # Optional: Global options (email for SSL)
     email {$EMAIL}
 }
 
-{$DOMAIN} {
+# Support both http and https during discovery
+http://{$DOMAIN}, https://{$DOMAIN} {
     # Main Application
-    reverse_proxy app:5000
+    reverse_proxy app:5000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
 
     # Jackett UI
-    # Note: If you get a 503 or 404, ensure Jackett is running.
-    # To access Jackett at /jackett, you may need to set 
-    # 'Base Path Override' to '/jackett' in Jackett's settings.
+    # Note: Access via http://yourdomain.com/jackett
     handle_path /jackett* {
         reverse_proxy jackett:9117 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
         }
     }
 
