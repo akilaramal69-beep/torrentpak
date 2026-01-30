@@ -1,27 +1,27 @@
-FROM python:3.11-slim as backend
+# --- Frontend Build Stage ---
+FROM node:20-slim AS frontend-builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
 
-# Install node for frontend build
-RUN apt-get update && apt-get install -y curl
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y nodejs
-
+# --- Runtime Stage ---
+FROM python:3.11-slim
 WORKDIR /app
 
-# Copy and install backend dependencies
+# Install runtime dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy and install frontend dependencies
-COPY package*.json ./
-RUN npm install
+# Copy built frontend assets from builder
+COPY --from=frontend-builder /app/dist ./dist
 
-# Copy project files
-COPY . .
-
-# Build frontend
-RUN npm run build
+# Copy backend code
+COPY app.py .
 
 # Expose port
 EXPOSE 5000
 
 # Start command
-CMD ["python", "app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
