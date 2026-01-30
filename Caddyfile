@@ -2,21 +2,10 @@
     email {$EMAIL}
 }
 
-# Main Site & API
+# Main Search Site
 {$DOMAIN} {
-    # Main Application
     reverse_proxy app:5000
     
-    # Jackett UI via path (Uses main domain SSL)
-    # Accessible at https://yourdomain.com/jackett/
-    handle_path /jackett* {
-        reverse_proxy jackett:9117 {
-            header_up X-Forwarded-Host {host}
-            header_up X-Forwarded-Proto {scheme}
-        }
-    }
-
-    # Security Headers
     header {
         Strict-Transport-Security "max-age=63072000"
         X-Content-Type-Options "nosniff"
@@ -26,7 +15,7 @@
     }
 }
 
-# Optional: Jackett Subdomain (Only works if you have 'jackett' A record)
+# Jackett Subdomain
 jackett.{$DOMAIN} {
     reverse_proxy jackett:9117 {
         header_up X-Forwarded-Host {host}
@@ -42,6 +31,7 @@ www.{$DOMAIN} {
 # Fallback for IP access (No SSL)
 :80 {
     reverse_proxy app:5000
+    # Allow Jackett access via IP/jackett if needed
     handle_path /jackett* {
         reverse_proxy jackett:9117
     }
