@@ -1,0 +1,21 @@
+{
+    # Optional: Global options (email for SSL)
+    email {$EMAIL}
+}
+
+{$DOMAIN} {
+    # Main Application
+    reverse_proxy app:5000
+
+    # Jackett UI
+    # Note: To access Jackett at /jackett, you may need to set 
+    # 'Base Path Override' to '/jackett' in Jackett's dashboard settings.
+    handle_path /jackett* {
+        reverse_proxy jackett:9117
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/access.log
+    }
+}

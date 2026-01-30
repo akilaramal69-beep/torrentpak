@@ -1,12 +1,44 @@
 services:
-  magnet-cloud:
+  app:
     build: .
-    ports:
-      - "5000:5000"
     environment:
       - PIKPAK_EMAIL=${PIKPAK_EMAIL}
       - PIKPAK_PASSWORD=${PIKPAK_PASSWORD}
-      - JACKETT_URL=${JACKETT_URL}
+      - JACKETT_URL=http://jackett:9117
       - JACKETT_API_KEY=${JACKETT_API_KEY}
-      - SECRET_KEY=${SECRET_KEY:-magnet_cloud_secret_shared_key}
+      - SECRET_KEY=${SECRET_KEY}
     restart: unless-stopped
+    depends_on:
+      - jackett
+
+  jackett:
+    image: lscr.io/linuxserver/jackett:latest
+    container_name: jackett
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - ./jackett_config:/config
+      - ./downloads:/downloads
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+      - EMAIL=${EMAIL:-admin@example.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:
