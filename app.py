@@ -285,12 +285,15 @@ def proxy_download(file_id):
         file_info = run_async(pikpak_client.file_get(file_id=file_id))
         filename = file_info.get('name', 'download')
         
+        # URL encode filename for Content-Disposition (RFC 5987)
+        quoted_filename = urllib.parse.quote(filename)
+        
         resp = requests.get(url, stream=True)
         return app.response_class(
             resp.iter_content(chunk_size=1024*1024),
             headers={
-                'Content-Type': resp.headers.get('Content-Type'),
-                'Content-Disposition': f'attachment; filename="{filename}"'
+                'Content-Disposition': f'attachment; filename="{filename}"; filename*=UTF-8\'\'{quoted_filename}',
+                'Content-Type': resp.headers.get('Content-Type', 'application/octet-stream')
             }
         )
     except Exception as e:

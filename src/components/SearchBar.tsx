@@ -11,7 +11,7 @@ interface SearchBarProps {
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({ query, setQuery, onSearch, isLoading, disabled }) => {
-  
+
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       onSearch();
@@ -30,7 +30,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ query, setQuery, onSearch, isLoad
         disabled={isLoading || disabled}
       />
       <button
-        onClick={onSearch}
+        onClick={() => onSearch()}
         disabled={isLoading || disabled}
         className="absolute right-2 top-1/2 -translate-y-1/2 h-12 px-6 flex items-center justify-center bg-sky-600 text-white rounded-full font-semibold hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-sky-500 disabled:bg-slate-600 disabled:cursor-not-allowed transition-all duration-300"
       >
@@ -41,8 +41,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ query, setQuery, onSearch, isLoad
           </>
         ) : (
           <>
-           <SearchIcon />
-           Search
+            <SearchIcon />
+            Search
           </>
         )}
       </button>

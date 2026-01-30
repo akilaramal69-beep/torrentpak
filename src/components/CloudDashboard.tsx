@@ -141,7 +141,6 @@ export const CloudDashboard: React.FC<CloudDashboardProps> = ({ isOpen, onClose 
                                 All Files
                             </button>
                             <div className="flex-1"></div>
-                            {user && <span className="text-sm text-slate-500 self-center">Welcome, {user.username}</span>}
                         </div>
 
                         {activeTab === 'tasks' && (
@@ -154,7 +153,7 @@ export const CloudDashboard: React.FC<CloudDashboardProps> = ({ isOpen, onClose 
                                             <div className="flex justify-between mb-2">
                                                 <span className="font-medium text-slate-200 truncate pr-4" title={task.name}>{task.name}</span>
                                                 <span className={`text-xs px-2 py-0.5 rounded-full ${task.phase === 'PHASE_TYPE_COMPLETE' ? 'bg-green-900/50 text-green-400' :
-                                                        task.phase === 'PHASE_TYPE_ERROR' ? 'bg-red-900/50 text-red-400' : 'bg-sky-900/50 text-sky-400'
+                                                    task.phase === 'PHASE_TYPE_ERROR' ? 'bg-red-900/50 text-red-400' : 'bg-sky-900/50 text-sky-400'
                                                     }`}>
                                                     {task.phase?.replace('PHASE_TYPE_', '')}
                                                 </span>
@@ -195,9 +194,9 @@ export const CloudDashboard: React.FC<CloudDashboardProps> = ({ isOpen, onClose 
                                             <div key={file.id} onClick={() => isFolder ? navigateToFolder(file.id, file.name) : null} className={`w-full text-left p-3 rounded-lg bg-slate-800/30 border border-slate-700 flex items-center justify-between gap-3 group ${isFolder ? 'cursor-pointer hover:bg-slate-800/50' : ''}`}>
                                                 <div className="flex items-center gap-3 min-w-0">
                                                     <span className="text-xl flex-shrink-0">{isFolder ? '📁' : '📄'}</span>
-                                                    <div className="min-w-0">
-                                                        <p className="text-slate-200 truncate pr-2" title={file.name}>{file.name}</p>
-                                                        <p className="text-xs text-slate-500">{formatSize(file.size)} • {new Date(file.created_time).toLocaleDateString()}</p>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-slate-200 truncate font-medium" title={file.name}>{file.name}</p>
+                                                        <p className="text-xs text-slate-500 mt-0.5">{formatSize(file.size)} • {new Date(file.created_time).toLocaleDateString()}</p>
                                                     </div>
                                                 </div>
                                                 {!isFolder && (
