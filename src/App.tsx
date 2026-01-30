@@ -15,6 +15,7 @@ function App() {
     const [selectedCategory, setSelectedCategory] = useState('');
     const [results, setResults] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [hasSearched, setHasSearched] = useState(false);
     const [error, setError] = useState('');
     const [sortConfig, setSortConfig] = useState<{ key: any, direction: 'ascending' | 'descending' | null }>({ key: null, direction: 'ascending' });
     const [currentPage, setCurrentPage] = useState(1);
@@ -56,6 +57,7 @@ function App() {
             }
             const data = await response.json();
             setResults(data.Results || []);
+            setHasSearched(true);
         } catch (err: any) {
             setError(err.message || 'Something went wrong');
             console.error('Search error:', err);
@@ -155,12 +157,12 @@ function App() {
                         <ResultsTable
                             results={results}
                             isLoading={isLoading}
-                            hasSearched={results.length > 0}
+                            hasSearched={hasSearched}
                             needsConfiguration={false}
                             sortConfig={sortConfig as any}
                             requestSort={requestSort}
                             currentPage={currentPage}
-                            totalPages={Math.ceil(results.length / 20)}
+                            totalPages={Math.ceil(results.length / 50)}
                             onPageChange={setCurrentPage}
                             totalResults={results.length}
                             onAddToCloud={handleAddToCloud}

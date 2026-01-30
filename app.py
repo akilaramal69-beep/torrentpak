@@ -7,6 +7,7 @@ from flask_cors import CORS
 from pikpakapi import PikPakApi
 from dotenv import load_dotenv
 import requests
+import urllib.parse
 from apscheduler.schedulers.background import BackgroundScheduler
 from functools import wraps
 
@@ -96,7 +97,11 @@ def debug_config():
     test_result = "Not tested"
     try:
         # Quick test to see if we can reach Jackett internally
-        resp = requests.get("http://jackett:9117/api/v2.0/indexers/all/results?apikey=" + (JACKETT_API_KEY or ""), timeout=5)
+        resp = requests.get(
+            "http://jackett:9117/api/v2.0/indexers/all/results?apikey=" + (JACKETT_API_KEY or ""), 
+            headers={'User-Agent': 'Mozilla/5.0'},
+            timeout=5
+        )
         test_result = f"Connected (Status: {resp.status_code})"
     except Exception as e:
         test_result = f"Failed: {str(e)}"
@@ -122,7 +127,7 @@ PUBLIC_TRACKERS = [
 
 def enrich_results(data):
     results = data.get('Results', [])
-    tracker_query = "&".join([f"tr={requests.utils.quote(t)}" for t in PUBLIC_TRACKERS])
+    tracker_query = "&".join([f"tr={urllib.parse.quote(t)}" for t in PUBLIC_TRACKERS])
     
     for res in results:
         magnet = res.get('MagnetUri')
@@ -138,7 +143,7 @@ def enrich_results(data):
             res['MagnetUri'] = f"{magnet}{sep}{tracker_query}"
         elif info_hash:
             # Construct magnet from hash
-            name = requests.utils.quote(res.get('Title', 'download'))
+            name = urllib.parse.quote(res.get('Title', 'download'))
             res['MagnetUri'] = f"magnet:?xt=urn:btih:{info_hash}&dn={name}&{tracker_query}"
             
     return data
@@ -176,7 +181,9 @@ def search_torrents():
                     
                 print(f"🔍 Trying Jackett: {url} (query: {query})", file=sys.stderr, flush=True)
                 # verify=False helps with self-signed certs inside docker networks
-                response = requests.get(url, params=params, timeout=15, verify=False)
+                # User-Agent help bypass some blocks
+                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+                response = requests.get(url, params=params, headers=headers, timeout=20, verify=False)
                 
                 if response.status_code == 200:
                     try:
