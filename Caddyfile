@@ -2,8 +2,8 @@
     email {$EMAIL}
 }
 
-# Support both http and https during discovery
-http://{$DOMAIN}, https://{$DOMAIN} {
+# Catch-all for HTTP (Allows access via VPS IP and domain before SSL is ready)
+:80 {
     # Main Application
     reverse_proxy app:5000 {
         header_up Host {host}
@@ -13,7 +13,6 @@ http://{$DOMAIN}, https://{$DOMAIN} {
     }
 
     # Jackett UI
-    # Note: Access via http://yourdomain.com/jackett
     handle_path /jackett* {
         reverse_proxy jackett:9117 {
             header_up Host {host}
@@ -22,9 +21,23 @@ http://{$DOMAIN}, https://{$DOMAIN} {
             header_up X-Forwarded-Proto {scheme}
         }
     }
+}
 
-    # Logging
-    log {
-        output file /var/log/caddy/access.log
+# Domain specific block (Caddy will automatically handle SSL Certificates)
+{$DOMAIN} {
+    reverse_proxy app:5000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    handle_path /jackett* {
+        reverse_proxy jackett:9117 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
     }
 }
