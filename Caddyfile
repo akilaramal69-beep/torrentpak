@@ -2,13 +2,21 @@
     email {$EMAIL}
 }
 
-# Main site
+# Main Site & API
 {$DOMAIN} {
-    reverse_proxy app:5000 {
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
-    }
+    # Main Application
+    reverse_proxy app:5000
     
+    # Jackett UI via path (Uses main domain SSL)
+    # Accessible at https://yourdomain.com/jackett/
+    handle_path /jackett* {
+        reverse_proxy jackett:9117 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Security Headers
     header {
         Strict-Transport-Security "max-age=63072000"
         X-Content-Type-Options "nosniff"
@@ -18,17 +26,8 @@
     }
 }
 
-# Jackett Access (Subdomain or Path-based fallback)
-# Note: If you have jackett.{$DOMAIN} DNS record, this works.
+# Optional: Jackett Subdomain (Only works if you have 'jackett' A record)
 jackett.{$DOMAIN} {
-    reverse_proxy jackett:9117 {
-        header_up X-Forwarded-Host {host}
-        header_up X-Forwarded-Proto {scheme}
-    }
-}
-
-# Also keep path-based fallback for convenience
-{$DOMAIN}/jackett* {
     reverse_proxy jackett:9117 {
         header_up X-Forwarded-Host {host}
         header_up X-Forwarded-Proto {scheme}
@@ -40,8 +39,7 @@ www.{$DOMAIN} {
     redir https://{$DOMAIN}{uri} permanent
 }
 
-# Explicit HTTP block for IP access debugging
-# Use this to access via http://43.160.200.250
+# Fallback for IP access (No SSL)
 :80 {
     reverse_proxy app:5000
     handle_path /jackett* {
