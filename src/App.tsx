@@ -59,7 +59,12 @@ function App() {
                 throw new Error(errorData.error || `Search failed (Status ${response.status})`);
             }
             const data = await response.json();
-            setResults(data.Results || []);
+            const rawResults = data.Results || [];
+
+            // Sort by seeders (highest first) by default
+            const sortedResults = [...rawResults].sort((a: any, b: any) => (b.Seeders || 0) - (a.Seeders || 0));
+
+            setResults(sortedResults as any);
             setHasSearched(true);
         } catch (err: any) {
             setError(err.message || 'Something went wrong');
@@ -85,13 +90,8 @@ function App() {
     };
 
     const handleAddToCloud = async (magnet: string, title: string) => {
-        try {
-            const { pikpak } = await import('./services/cloudService');
-            await pikpak.addDownload(magnet, title);
-            setIsCloudOpen(true);
-        } catch (e: any) {
-            alert(e.message || 'Failed to add download');
-        }
+        // Cloud functionality disabled for now
+        console.log('Cloud download requested for:', title);
     };
 
     return (
@@ -106,26 +106,18 @@ function App() {
                 <div className="container mx-auto px-4 py-8">
                     <header className="flex flex-col items-center justify-center text-center mb-8">
                         <div className="absolute top-4 right-4">
-                            <button
-                                onClick={() => setIsCloudOpen(true)}
-                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
-                            >
-                                <span className="text-xl">☁️</span>
-                                <span className="hidden md:inline text-sm font-medium text-slate-300">
-                                    Cloud Drive
-                                </span>
-                            </button>
+                            {/* Cloud Drive button removed */}
                         </div>
 
                         <div className="relative w-full max-w-3xl flex items-center justify-center">
                             <div className="flex items-center gap-4">
                                 <LogoIcon />
                                 <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-300">
-                                    Magnet Cloud
+                                    TorrentWave
                                 </h1>
                             </div>
                         </div>
-                        <p className="text-slate-400 mt-2">Search and stream magnets to your private cloud.</p>
+                        <p className="text-slate-400 mt-2">The fastest way to find your favorite torrents.</p>
                     </header>
 
                     <main>

@@ -313,18 +313,6 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
                       >
                         <ClipboardCopyIcon />
                       </button>
-                      <button
-                        onClick={() => onAddToCloud && result.MagnetUri && onAddToCloud(result.MagnetUri, result.Title)}
-                        title="Download to Cloud"
-                        disabled={!result.MagnetUri}
-                        className="p-2 text-slate-400 rounded-full transition-all duration-200 enabled:hover:text-sky-400 enabled:hover:bg-slate-700 disabled:text-slate-600 disabled:cursor-not-allowed"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                          <polyline points="7 10 12 15 17 10" />
-                          <line x1="12" y1="15" x2="12" y2="3" />
-                        </svg>
-                      </button>
                       <a href={result.Details} target="_blank" rel="noopener noreferrer" title="View on Tracker" className="p-2 text-slate-400 hover:text-sky-400 hover:bg-slate-700 rounded-full transition-all duration-200" aria-label="View on Tracker">
                         <ExternalLinkIcon />
                       </a>
@@ -391,19 +379,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
                     <ClipboardCopyIcon />
                     <span>Copy</span>
                   </button>
-                  <button
-                    onClick={() => onAddToCloud && result.MagnetUri && onAddToCloud(result.MagnetUri, result.Title)}
-                    title="Download to Cloud"
-                    disabled={!result.MagnetUri}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm bg-slate-700 text-white rounded-md font-semibold hover:bg-slate-600 disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="7 10 12 15 17 10" />
-                      <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
-                    <span>Download</span>
-                  </button>
+                  {/* Cloud button removed */}
                   <a href={result.Details} target="_blank" rel="noopener noreferrer" title="View on Tracker" className="p-2.5 text-slate-400 bg-slate-700 hover:text-sky-400 hover:bg-slate-600 rounded-md transition-all duration-200" aria-label="View on Tracker" >
                     <ExternalLinkIcon />
                   </a>

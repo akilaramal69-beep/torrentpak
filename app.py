@@ -15,7 +15,7 @@ from functools import wraps
 load_dotenv()
 
 app = Flask(__name__, static_folder='dist', static_url_path='')
-app.secret_key = os.getenv('SECRET_KEY', 'magnet_cloud_secret_shared_key')
+app.secret_key = os.getenv('SECRET_KEY', 'torrentwave_secret_shared_key')
 CORS(app)
 
 # PikPak Configuration

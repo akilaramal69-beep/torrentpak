@@ -1,20 +1,19 @@
-# ☁️ Magnet Cloud
+# 🌊 TorrentWave
 
-A white-labeled, high-performance torrent search and cloud download platform. Search for magnets and download them directly to your private cloud storage.
+A private, high-performance torrent search engine. Rapidly find verified magnet links and explore content across the web.
 
 ## ✨ Features
 - **Global Search**: Search across dozens of indexers via Jackett.
-- **Cloud Downloads**: One-click download to your cloud drive.
-- **Proxy Streaming**: Download files via backend proxy to preserve anonymity.
-- **Rate Limited**: Built-in IP-based rate limiting to protect the backend.
-- **Mobile Friendly**: Fully responsive design.
-- **Auto-Auth**: Set credentials in `.env` once; no user login required.
+- **Seeder Priority**: Automatically sorts the healthiest results to the top.
+- **Clean Interface**: Focused search experience without bloat.
+- **Mobile Friendly**: Fully responsive design for searching on any device.
+- **Private Setup**: Runs entirely on your own server.
 
 ---
 
 ## 🚀 All-in-One Deployment (Recommended)
 
-This setup runs **Magnet Cloud**, **Jackett**, and **Caddy** (for SSL) together on your VPS using Docker.
+This setup runs **TorrentWave**, **Jackett**, and **Caddy** (for SSL) together on your VPS using Docker.
 
 ### 1. Clone the repository
 ```bash
