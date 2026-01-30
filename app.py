@@ -103,7 +103,7 @@ def debug_config():
 @app.route('/api/search', methods=['GET'])
 def search_torrents():
     query = request.args.get('q')
-    category = request.args.get('category', '')
+    category = request.args.get('category', '') or None
     if not query:
         return jsonify({'error': 'No query provided'}), 400
 
@@ -120,11 +120,13 @@ def search_torrents():
             url = f"{JACKETT_URL.rstrip('/')}{path}"
             params = {
                 'apikey': JACKETT_API_KEY,
-                'Query': query,
-                'Category': category
+                'Query': query
             }
+            if category:
+                params['Category[]'] = category
+                
             print(f"🔍 Searching Jackett: {url}", file=sys.stderr)
-            response = requests.get(url, params=params, timeout=10)
+            response = requests.get(url, params=params, timeout=15)
             
             if response.status_code == 200:
                 data = response.json()
@@ -133,6 +135,7 @@ def search_torrents():
                 return jsonify(data)
             
             if response.status_code == 404:
+                print(f"⚠️ Path {path} not found (404), trying next...", file=sys.stderr)
                 continue
                 
             print(f"❌ Jackett error {response.status_code}: {response.text}", file=sys.stderr)
@@ -142,7 +145,7 @@ def search_torrents():
             print(f"❌ Search Exception at {path}: {str(e)}", file=sys.stderr)
             last_error = str(e)
 
-    return jsonify({'error': last_error or "Could not reach Jackett. Check base path settings."}), 502
+    return jsonify({'error': last_error or "Could not reach Jackett. Check base path and API key."}), 502
 
 @app.route('/api/user', methods=['GET'])
 def get_user():
