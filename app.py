@@ -134,6 +134,8 @@ def debug_config():
         'configured_indexers': indexers_found,
         'indexers_count': len(indexers_found),
         'pikpak_auth': bool(pikpak_client),
+        'pikpak_env_email': PIKPAK_EMAIL[:3] + "..." if PIKPAK_EMAIL else "MISSING",
+        'pikpak_env_pass_set': bool(PIKPAK_PASSWORD),
         'server_time': datetime.now().isoformat()
     })
 

@@ -31,10 +31,13 @@ function App() {
             // In a real app, Jackett has a capabilities endpoint. For now, we'll use a static list or fetch from API if available.
             setCategories([
                 { id: '2000', name: 'Movies' },
-                { id: '5000', name: 'TV' },
-                { id: '1000', name: 'Console' },
-                { id: '4000', name: 'PC' },
-                { id: '3000', name: 'Audio' }
+                { id: '2040', name: 'Movies (HD)' },
+                { id: '5000', name: 'TV Shows' },
+                { id: '5070', name: 'TV (HD)' },
+                { id: '3000', name: 'Music' },
+                { id: '4000', name: 'PC Games' },
+                { id: '6000', name: 'Software' },
+                { id: '7000', name: 'Books' }
             ]);
         } catch (e) {
             console.error("Failed to fetch categories");
