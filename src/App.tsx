@@ -117,7 +117,7 @@ function App() {
                                 </h1>
                             </div>
                         </div>
-                        <p className="text-slate-400 mt-2">The fastest way to find your favorite torrents.</p>
+                        <p className="text-slate-400 mt-2">Sailing high seas to find torrents.</p>
                     </header>
 
                     <main>
