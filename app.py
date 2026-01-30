@@ -351,15 +351,27 @@ def proxy_download(file_id):
 def cleanup_files():
     if not pikpak_client: return
     try:
-        print("🧹 Running cleanup job...")
-        # Implementation of file cleanup based on timestamps
-        # Since we use global account, we should be careful what we delete.
-        # For simplicity in this white-label version, we focus on tasks.
+        print("🧹 Running cleanup job...", file=sys.stderr, flush=True)
+        # Periodic cleanup of tasks can go here
     except Exception as e:
-        print(f"❌ Cleanup failed: {str(e)}")
+        print(f"❌ Cleanup failed: {str(e)}", file=sys.stderr, flush=True)
+
+# Keep-Alive Heartbeat
+def pikpak_heartbeat():
+    global pikpak_client
+    if not pikpak_client: return
+    try:
+        print("💓 Sending PikPak heartbeat...", file=sys.stderr, flush=True)
+        # Fetching user info is a lightweight way to keep session active
+        pikpak_client.get_user_info()
+    except Exception as e:
+        print(f"⚠️ Heartbeat failed: {str(e)}. Session might be expired.", file=sys.stderr, flush=True)
+        # We don't force a login here to avoid loops, 
+        # the next request will trigger self-healing if needed.
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=cleanup_files, trigger="interval", minutes=60)
+scheduler.add_job(func=pikpak_heartbeat, trigger="interval", minutes=5)
 scheduler.start()
 
 if __name__ == '__main__':
