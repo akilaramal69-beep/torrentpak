@@ -2,15 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { pikpak } from '../services/cloudService';
 import { CloseIcon } from './Icons';
 
-interface CloudFile {
-    id: string;
-    kind: string;
-    name: string;
-    size: string;
-    created_time: string;
-    [key: string]: any;
-}
-
 interface CloudTask {
     id: string;
     name: string;
@@ -35,42 +26,17 @@ const formatSize = (sizeStr: string) => {
 };
 
 export const CloudDashboard: React.FC<CloudDashboardProps> = ({ isOpen, onClose }) => {
-    const [activeTab, setActiveTab] = useState<'tasks' | 'files'>('tasks');
     const [tasks, setTasks] = useState<CloudTask[]>([]);
-    const [files, setFiles] = useState<CloudFile[]>([]);
-    const [currentFolder, setCurrentFolder] = useState<string | null>(null);
-    const [folderStack, setFolderStack] = useState<{ id: string; name: string }[]>([]);
-    const [user, setUser] = useState<any>(null);
-
-    useEffect(() => {
-        if (isOpen) {
-            checkAuth();
-        }
-    }, [isOpen]);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         let interval: any;
-        if (isOpen && activeTab === 'tasks') {
+        if (isOpen) {
             loadTasks();
             interval = setInterval(loadTasks, 5000);
         }
         return () => clearInterval(interval);
-    }, [isOpen, activeTab]);
-
-    useEffect(() => {
-        if (isOpen && activeTab === 'files') {
-            loadFiles(currentFolder);
-        }
-    }, [isOpen, activeTab, currentFolder]);
-
-    const checkAuth = async () => {
-        try {
-            const data = await pikpak.getUser();
-            setUser(data);
-        } catch (e) {
-            console.error(e);
-        }
-    };
+    }, [isOpen]);
 
     const loadTasks = async () => {
         try {
@@ -78,36 +44,8 @@ export const CloudDashboard: React.FC<CloudDashboardProps> = ({ isOpen, onClose 
             setTasks(data.tasks || []);
         } catch (e) {
             console.error(e);
-        }
-    };
-
-    const loadFiles = async (parentId?: string | null) => {
-        try {
-            const data = await pikpak.getFiles(parentId || undefined);
-            setFiles(data.files || []);
-        } catch (e) {
-            console.error(e);
-        }
-    };
-
-    const navigateToFolder = (folderId: string | null, folderName: string) => {
-        if (folderId === null) {
-            setCurrentFolder(null);
-            setFolderStack([]);
-        } else {
-            setCurrentFolder(folderId);
-            setFolderStack(prev => [...prev, { id: folderId, name: folderName }]);
-        }
-    };
-
-    const navigateUp = () => {
-        if (folderStack.length <= 1) {
-            setCurrentFolder(null);
-            setFolderStack([]);
-        } else {
-            const newStack = folderStack.slice(0, -1);
-            setFolderStack(newStack);
-            setCurrentFolder(newStack[newStack.length - 1].id);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -115,100 +53,76 @@ export const CloudDashboard: React.FC<CloudDashboardProps> = ({ isOpen, onClose 
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-xl max-h-[80vh] flex flex-col overflow-hidden">
                 <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-800/50">
                     <h2 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-300">
-                        Cloud Drive
+                        My Downloads
                     </h2>
                     <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
                         <CloseIcon />
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-auto p-4">
+                <div className="flex-1 overflow-auto p-6">
                     <div className="h-full flex flex-col">
-                        <div className="flex gap-2 mb-4">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500">Active & Recent Transfers</h3>
                             <button
-                                onClick={() => setActiveTab('tasks')}
-                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'tasks' ? 'bg-sky-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                                onClick={() => { setIsLoading(true); loadTasks(); }}
+                                className="text-xs text-sky-400 hover:text-sky-300 font-medium transition-colors"
                             >
-                                Active Transfers
+                                {isLoading ? 'Refreshing...' : 'Refresh List'}
                             </button>
-                            <button
-                                onClick={() => setActiveTab('files')}
-                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'files' ? 'bg-sky-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
-                            >
-                                All Files
-                            </button>
-                            <div className="flex-1"></div>
                         </div>
 
-                        {activeTab === 'tasks' && (
-                            <div className="space-y-3">
-                                {tasks.length === 0 ? (
-                                    <p className="text-center text-slate-500 py-8">No active transfers</p>
-                                ) : (
-                                    tasks.map(task => (
-                                        <div key={task.id} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
-                                            <div className="flex justify-between mb-2">
-                                                <span className="font-medium text-slate-200 truncate pr-4" title={task.name}>{task.name}</span>
-                                                <span className={`text-xs px-2 py-0.5 rounded-full ${task.phase === 'PHASE_TYPE_COMPLETE' ? 'bg-green-900/50 text-green-400' :
-                                                    task.phase === 'PHASE_TYPE_ERROR' ? 'bg-red-900/50 text-red-400' : 'bg-sky-900/50 text-sky-400'
-                                                    }`}>
-                                                    {task.phase?.replace('PHASE_TYPE_', '')}
-                                                </span>
-                                            </div>
-                                            <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                                                <div className="bg-sky-500 h-full transition-all duration-300" style={{ width: `${task.progress}%` }}></div>
-                                            </div>
-                                            <div className="flex justify-between mt-1 text-xs text-slate-500">
-                                                <span>{task.file_size ? formatSize(task.file_size) : ''}</span>
-                                                <span>{task.progress}%</span>
-                                            </div>
+                        <div className="space-y-4">
+                            {tasks.length === 0 ? (
+                                <div className="text-center py-12 px-4 bg-slate-800/30 border border-dashed border-slate-700 rounded-lg">
+                                    <p className="text-slate-400">No active downloads.</p>
+                                    <p className="text-xs text-slate-500 mt-1">Start a search to add torrents to your cloud.</p>
+                                </div>
+                            ) : (
+                                tasks.map(task => (
+                                    <div key={task.id} className="bg-slate-800/50 p-4 rounded-lg border border-slate-700 shadow-sm">
+                                        <div className="flex justify-between items-start gap-3 mb-3">
+                                            <span className="font-medium text-slate-200 text-sm break-all leading-tight" title={task.name}>
+                                                {task.name}
+                                            </span>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${task.phase === 'PHASE_TYPE_COMPLETE' ? 'bg-green-900/40 text-green-400 border border-green-800/50' :
+                                                    task.phase === 'PHASE_TYPE_ERROR' ? 'bg-red-900/40 text-red-400 border border-red-800/50' :
+                                                        'bg-sky-900/40 text-sky-400 border border-sky-800/50'
+                                                }`}>
+                                                {task.phase?.replace('PHASE_TYPE_', '')}
+                                            </span>
                                         </div>
-                                    ))
-                                )}
-                            </div>
-                        )}
 
-                        {activeTab === 'files' && (
-                            <div className="flex-1 flex flex-col min-h-0">
-                                <div className="flex items-center gap-2 mb-3 text-sm overflow-x-auto pb-1">
-                                    <button onClick={() => navigateToFolder(null, '')} className="text-slate-400 hover:text-white">Home</button>
-                                    {folderStack.map((f) => (
-                                        <React.Fragment key={f.id}>
-                                            <span className="text-slate-600">/</span>
-                                            <span className="text-slate-200 whitespace-nowrap">{f.name}</span>
-                                        </React.Fragment>
-                                    ))}
-                                </div>
-                                <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                                    {folderStack.length > 0 && (
-                                        <button onClick={navigateUp} className="w-full text-left p-3 rounded-lg bg-slate-800/30 hover:bg-slate-800/50 border border-slate-800 flex items-center gap-3">
-                                            <span className="text-xl">📁</span> <span className="text-slate-300">..</span>
-                                        </button>
-                                    )}
-                                    {files.map(file => {
-                                        const isFolder = file.kind === 'drive#folder';
-                                        return (
-                                            <div key={file.id} onClick={() => isFolder ? navigateToFolder(file.id, file.name) : null} className={`w-full text-left p-3 rounded-lg bg-slate-800/30 border border-slate-700 flex items-center justify-between gap-3 group ${isFolder ? 'cursor-pointer hover:bg-slate-800/50' : ''}`}>
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                    <span className="text-xl flex-shrink-0">{isFolder ? '📁' : '📄'}</span>
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className="text-slate-200 truncate font-medium" title={file.name}>{file.name}</p>
-                                                        <p className="text-xs text-slate-500 mt-0.5">{formatSize(file.size)} • {new Date(file.created_time).toLocaleDateString()}</p>
-                                                    </div>
-                                                </div>
-                                                {!isFolder && (
-                                                    <a href={`/api/proxy/download/${file.id}`} target="_blank" download className="px-3 py-1 bg-sky-600 hover:bg-sky-500 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity">Download</a>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
+                                        <div className="w-full bg-slate-700 h-2 rounded-full overflow-hidden shadow-inner mb-2">
+                                            <div
+                                                className={`h-full transition-all duration-500 ease-out ${task.phase === 'PHASE_TYPE_COMPLETE' ? 'bg-green-500' : 'bg-sky-500'
+                                                    }`}
+                                                style={{ width: `${task.progress}%` }}
+                                            ></div>
+                                        </div>
+
+                                        <div className="flex justify-between items-center text-xs">
+                                            <span className="text-slate-400 font-mono italic">
+                                                {task.file_size ? formatSize(task.file_size) : ''}
+                                            </span>
+                                            <span className="text-sky-400 font-bold">
+                                                {task.progress}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
+                </div>
+
+                <div className="p-4 bg-slate-800/30 border-t border-slate-800 text-center">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest">
+                        PikPak Cloud Integration Active
+                    </p>
                 </div>
             </div>
         </div>

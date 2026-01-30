@@ -62,8 +62,13 @@ with app.app_context():
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+        global pikpak_client
         if not pikpak_client:
-            return jsonify({'error': 'Cloud backend not authenticated. Check .env'}), 503
+            print("🔄 Auth missing, attempting self-healing login...", file=sys.stderr)
+            run_async(init_pikpak())
+            
+        if not pikpak_client:
+            return jsonify({'error': 'Cloud backend not authenticated. Please check your PIKPAK_EMAIL and PIKPAK_PASSWORD in the .env file and restart the containers.'}), 503
         return f(*args, **kwargs)
     return decorated
 
