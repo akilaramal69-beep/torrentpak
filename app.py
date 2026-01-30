@@ -23,7 +23,13 @@ PIKPAK_EMAIL = os.getenv('PIKPAK_EMAIL')
 PIKPAK_PASSWORD = os.getenv('PIKPAK_PASSWORD')
 
 # Jackett Configuration
-JACKETT_URL = os.getenv('JACKETT_URL') or os.getenv('VITE_JACKETT_URL')
+RAW_JACKETT_URL = os.getenv('JACKETT_URL') or os.getenv('VITE_JACKETT_URL')
+JACKETT_URL = RAW_JACKETT_URL
+if RAW_JACKETT_URL:
+    import re
+    # Fix single slash typos like https:/domain.com
+    JACKETT_URL = re.sub(r'^(https?):/([^/])', r'\1://\2', RAW_JACKETT_URL)
+
 JACKETT_API_KEY = os.getenv('JACKETT_API_KEY') or os.getenv('VITE_JACKETT_API_KEY')
 
 # Global PikPak Client
@@ -123,8 +129,11 @@ def debug_config():
             timeout=5, verify=False
         )
         if idx_resp.status_code == 200:
-            indexers = idx_resp.json()
-            indexers_found = [i.get('name') for i in indexers if i.get('configured')]
+            try:
+                indexers = idx_resp.json()
+                indexers_found = [i.get('name') for i in indexers if i.get('configured')]
+            except:
+                internal_test += " (Indexers call returned non-JSON)"
     except Exception as e:
         internal_test = f"Failed: {str(e)}"
 
