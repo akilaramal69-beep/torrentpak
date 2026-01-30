@@ -2,42 +2,49 @@
     email {$EMAIL}
 }
 
-# Catch-all for HTTP (Allows access via VPS IP and domain before SSL is ready)
-:80 {
-    # Main Application
-    reverse_proxy app:5000 {
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-    }
-
-    # Jackett UI
-    handle_path /jackett* {
-        reverse_proxy jackett:9117 {
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-        }
-    }
-}
-
-# Domain specific block (Caddy will automatically handle SSL Certificates)
+# Main site
 {$DOMAIN} {
     reverse_proxy app:5000 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
+    }
+    
+    header {
+        Strict-Transport-Security "max-age=63072000"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        X-Frame-Options "DENY"
+        -Server
+    }
+}
+
+# Jackett Access (Subdomain or Path-based fallback)
+# Note: If you have jackett.{$DOMAIN} DNS record, this works.
+jackett.{$DOMAIN} {
+    reverse_proxy jackett:9117 {
+        header_up X-Forwarded-Host {host}
         header_up X-Forwarded-Proto {scheme}
     }
+}
 
+# Also keep path-based fallback for convenience
+{$DOMAIN}/jackett* {
+    reverse_proxy jackett:9117 {
+        header_up X-Forwarded-Host {host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# WWW redirect
+www.{$DOMAIN} {
+    redir https://{$DOMAIN}{uri} permanent
+}
+
+# Explicit HTTP block for IP access debugging
+# Use this to access via http://43.160.200.250
+:80 {
+    reverse_proxy app:5000
     handle_path /jackett* {
-        reverse_proxy jackett:9117 {
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-        }
+        reverse_proxy jackett:9117
     }
 }
