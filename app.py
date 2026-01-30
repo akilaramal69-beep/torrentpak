@@ -137,51 +137,54 @@ def enrich_results(data):
 @app.route('/api/search', methods=['GET'])
 def search_torrents():
     query = request.args.get('q')
-    category = request.args.get('category', '') or None
+    category = request.args.get('category', '')
     if not query:
         return jsonify({'error': 'No query provided'}), 400
 
     if not JACKETT_URL or not JACKETT_API_KEY:
-        print("❌ Search failed: Jackett not configured in .env", file=sys.stderr)
+        print("❌ Search failed: Jackett key or URL missing", file=sys.stderr)
         return jsonify({'error': 'Jackett not configured'}), 500
 
-    # Paths to try (Standard and Path Override)
+    # Smart fallback: Try the configured URL first, then the internal Docker URL
+    base_urls = []
+    if JACKETT_URL:
+        base_urls.append(JACKETT_URL.rstrip('/'))
+    base_urls.append("http://jackett:9117")
+    
     paths = ["/api/v2.0/indexers/all/results", "/jackett/api/v2.0/indexers/all/results"]
     
     last_error = None
-    for path in paths:
-        try:
-            url = f"{JACKETT_URL.rstrip('/')}{path}"
-            params = {
-                'apikey': JACKETT_API_KEY,
-                'Query': query
-            }
-            # Only send category if it's a valid numeric ID (not 'all' or empty)
-            if category and category != 'all' and category != '':
-                params['Category[]'] = category
+    for base in base_urls:
+        for path in paths:
+            try:
+                url = f"{base}{path}"
+                params = {
+                    'apikey': JACKETT_API_KEY,
+                    'Query': query
+                }
+                if category and category != 'all' and category != '':
+                    params['Category[]'] = category
+                    
+                print(f"🔍 Trying Jackett: {url}", file=sys.stderr)
+                response = requests.get(url, params=params, timeout=10)
                 
-            print(f"🔍 Searching Jackett: {url} (query: {query})", file=sys.stderr)
-            response = requests.get(url, params=params, timeout=15)
-            
-            if response.status_code == 200:
-                data = response.json()
-                data = enrich_results(data)
-                results = data.get('Results', [])
-                print(f"✅ Found {len(results)} results", file=sys.stderr)
-                return jsonify(data)
-            
-            if response.status_code == 404:
-                print(f"⚠️ Path {path} not found (404), trying next...", file=sys.stderr)
-                continue
+                if response.status_code == 200:
+                    data = response.json()
+                    data = enrich_results(data)
+                    results = data.get('Results', [])
+                    print(f"✅ SUCCESS: Found {len(results)} results using {url}", file=sys.stderr)
+                    return jsonify(data)
                 
-            print(f"❌ Jackett error {response.status_code}: {response.text}", file=sys.stderr)
-            last_error = f"Jackett error: {response.status_code}"
-            
-        except Exception as e:
-            print(f"❌ Search Exception at {path}: {str(e)}", file=sys.stderr)
-            last_error = str(e)
+                if response.status_code == 404:
+                    continue
+                
+                print(f"⚠️ {url} returned {response.status_code}", file=sys.stderr)
+                last_error = f"Jackett error {response.status_code}"
+            except Exception as e:
+                print(f"⚠️ {base}{path} failed: {str(e)}", file=sys.stderr)
+                last_error = str(e)
 
-    return jsonify({'error': last_error or "Could not reach Jackett. Check base path and API key."}), 502
+    return jsonify({'error': last_error or "Could not reach Jackett. Check indexers and API key."}), 502
 
 @app.route('/api/user', methods=['GET'])
 def get_user():
