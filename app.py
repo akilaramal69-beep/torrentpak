@@ -89,6 +89,17 @@ def serve_index():
 def serve_static(path):
     return send_from_directory(app.static_folder, path)
 
+import sys
+
+@app.route('/api/debug', methods=['GET'])
+def debug_config():
+    return jsonify({
+        'jackett_url': JACKETT_URL,
+        'jackett_key_set': bool(JACKETT_API_KEY),
+        'pikpak_auth': bool(pikpak_client),
+        'server_time': datetime.now().isoformat()
+    })
+
 @app.route('/api/search', methods=['GET'])
 def search_torrents():
     query = request.args.get('q')
@@ -97,7 +108,7 @@ def search_torrents():
         return jsonify({'error': 'No query provided'}), 400
 
     if not JACKETT_URL or not JACKETT_API_KEY:
-        print("❌ Search failed: Jackett not configured in .env")
+        print("❌ Search failed: Jackett not configured in .env", file=sys.stderr)
         return jsonify({'error': 'Jackett not configured'}), 500
 
     # Paths to try (Standard and Path Override)
@@ -112,23 +123,23 @@ def search_torrents():
                 'Query': query,
                 'Category': category
             }
-            print(f"🔍 Searching Jackett: {url} (query: {query})")
+            print(f"🔍 Searching Jackett: {url}", file=sys.stderr)
             response = requests.get(url, params=params, timeout=10)
             
             if response.status_code == 200:
                 data = response.json()
                 results = data.get('Results', [])
-                print(f"✅ Found {len(results)} results")
+                print(f"✅ Found {len(results)} results", file=sys.stderr)
                 return jsonify(data)
             
             if response.status_code == 404:
-                continue # Try the next path
+                continue
                 
-            print(f"❌ Jackett error {response.status_code}: {response.text}")
+            print(f"❌ Jackett error {response.status_code}: {response.text}", file=sys.stderr)
             last_error = f"Jackett error: {response.status_code}"
             
         except Exception as e:
-            print(f"❌ Search Exception at {path}: {str(e)}")
+            print(f"❌ Search Exception at {path}: {str(e)}", file=sys.stderr)
             last_error = str(e)
 
     return jsonify({'error': last_error or "Could not reach Jackett. Check base path settings."}), 502
