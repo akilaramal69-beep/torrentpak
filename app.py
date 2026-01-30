@@ -100,24 +100,38 @@ def search_torrents():
         print("❌ Search failed: Jackett not configured in .env")
         return jsonify({'error': 'Jackett not configured'}), 500
 
-    try:
-        url = f"{JACKETT_URL}/api/v2.0/indexers/all/results"
-        params = {
-            'apikey': JACKETT_API_KEY,
-            'Query': query,
-            'Category': category
-        }
-        print(f"🔍 Searching Jackett: {url} (query: {query})")
-        response = requests.get(url, params=params, timeout=10)
-        
-        if response.status_code != 200:
-            print(f"❌ Jackett returned error {response.status_code}: {response.text}")
-            return jsonify({'error': f'Jackett error: {response.status_code}'}), 502
+    # Paths to try (Standard and Path Override)
+    paths = ["/api/v2.0/indexers/all/results", "/jackett/api/v2.0/indexers/all/results"]
+    
+    last_error = None
+    for path in paths:
+        try:
+            url = f"{JACKETT_URL.rstrip('/')}{path}"
+            params = {
+                'apikey': JACKETT_API_KEY,
+                'Query': query,
+                'Category': category
+            }
+            print(f"🔍 Searching Jackett: {url} (query: {query})")
+            response = requests.get(url, params=params, timeout=10)
             
-        return jsonify(response.json())
-    except Exception as e:
-        print(f"❌ Search Exception: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get('Results', [])
+                print(f"✅ Found {len(results)} results")
+                return jsonify(data)
+            
+            if response.status_code == 404:
+                continue # Try the next path
+                
+            print(f"❌ Jackett error {response.status_code}: {response.text}")
+            last_error = f"Jackett error: {response.status_code}"
+            
+        except Exception as e:
+            print(f"❌ Search Exception at {path}: {str(e)}")
+            last_error = str(e)
+
+    return jsonify({'error': last_error or "Could not reach Jackett. Check base path settings."}), 502
 
 @app.route('/api/user', methods=['GET'])
 def get_user():
