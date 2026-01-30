@@ -100,6 +100,40 @@ def debug_config():
         'server_time': datetime.now().isoformat()
     })
 
+# Comprehensive list of stable public trackers
+PUBLIC_TRACKERS = [
+    'udp://tracker.opentrackr.org:1337/announce',
+    'udp://open.tracker.cl:1337/announce',
+    'udp://9.rarbg.com:2810/announce',
+    'udp://tracker.openbittorrent.com:80/announce',
+    'udp://opentracker.i2p.rocks:6969/announce',
+    'udp://tracker.internetwarriors.net:1337/announce',
+    'udp://tracker.leechers-paradise.org:6969/announce',
+]
+
+def enrich_results(data):
+    results = data.get('Results', [])
+    tracker_query = "&".join([f"tr={requests.utils.quote(t)}" for t in PUBLIC_TRACKERS])
+    
+    for res in results:
+        magnet = res.get('MagnetUri')
+        link = res.get('Link')
+        info_hash = res.get('InfoHash')
+        
+        if not magnet and link and link.startswith('magnet:'):
+            magnet = link
+            
+        if magnet:
+            # Add trackers if not present
+            sep = '&' if '?' in magnet else '?'
+            res['MagnetUri'] = f"{magnet}{sep}{tracker_query}"
+        elif info_hash:
+            # Construct magnet from hash
+            name = requests.utils.quote(res.get('Title', 'download'))
+            res['MagnetUri'] = f"magnet:?xt=urn:btih:{info_hash}&dn={name}&{tracker_query}"
+            
+    return data
+
 @app.route('/api/search', methods=['GET'])
 def search_torrents():
     query = request.args.get('q')
@@ -130,6 +164,7 @@ def search_torrents():
             
             if response.status_code == 200:
                 data = response.json()
+                data = enrich_results(data)
                 results = data.get('Results', [])
                 print(f"✅ Found {len(results)} results", file=sys.stderr)
                 return jsonify(data)

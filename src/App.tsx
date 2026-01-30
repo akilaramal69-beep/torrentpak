@@ -50,11 +50,15 @@ function App() {
 
         try {
             const response = await fetch(`/api/search?q=${encodeURIComponent(searchTerms)}&category=${selectedCategory}`);
-            if (!response.ok) throw new Error('Search failed');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Search failed (Status ${response.status})`);
+            }
             const data = await response.json();
             setResults(data.Results || []);
         } catch (err: any) {
             setError(err.message || 'Something went wrong');
+            console.error('Search error:', err);
         } finally {
             setIsLoading(false);
         }
