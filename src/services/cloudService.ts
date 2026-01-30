@@ -16,8 +16,8 @@ export const pikpak = {
 
         const response = await fetch(url, config);
         if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || 'Request failed');
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.message || err.error || 'Request failed');
         }
         return response.json();
     },

@@ -60,8 +60,14 @@ async def init_pikpak():
         pikpak_client = client
         print("✅ PikPak Authentication Successful", file=sys.stderr, flush=True)
     except Exception as e:
+        error_msg = str(e)
+        if "result:review" in error_msg or "review" in error_msg.lower():
+            print(f"⚠️ ACTION REQUIRED: PikPak account {PIKPAK_EMAIL} needs verification.", file=sys.stderr, flush=True)
+            print(f"⚠️ Please log in to https://mypikpak.com once in your browser to 'trust' this device.", file=sys.stderr, flush=True)
+            # We don't set pikpak_client so require_auth can catch it
+        
         print(f"❌ PikPak Login Failed for {PIKPAK_EMAIL}", file=sys.stderr, flush=True)
-        print(f"❌ Error Detail: {str(e)}", file=sys.stderr, flush=True)
+        print(f"❌ Error Detail: {error_msg}", file=sys.stderr, flush=True)
         import traceback
         traceback.print_exc()
 
@@ -78,7 +84,12 @@ def require_auth(f):
             run_async(init_pikpak())
             
         if not pikpak_client:
-            return jsonify({'error': 'Cloud backend not authenticated. Please check your PIKPAK_EMAIL and PIKPAK_PASSWORD in the .env file and restart the containers.'}), 503
+            # Check if it was a review error
+            return jsonify({
+                'error': 'Cloud backend not authenticated.',
+                'action_required': 'security_verification',
+                'message': 'PikPak is requesting security verification. Please log in to https://mypikpak.com once in your browser, then try again here.'
+            }), 503
         return f(*args, **kwargs)
     return decorated
 
@@ -211,12 +222,12 @@ def search_torrents():
                     'apikey': JACKETT_API_KEY,
                     'Query': query
                 }
+                
                 # Support both Category and Category[] just in case
-                if category and category != 'all' and category != '':
+                if category and category != 'all' and category != 'undefined' and category != '':
                     params['Category[]'] = category
-                    params['Category'] = category
                     
-                print(f"🔍 Trying Jackett: {url} (query: {query})", file=sys.stderr, flush=True)
+                print(f"🔍 Trying Jackett: {url} (query: {query}, cat: {category})", file=sys.stderr, flush=True)
                 # verify=False helps with self-signed certs inside docker networks
                 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
                 response = requests.get(url, params=params, headers=headers, timeout=25, verify=False)
