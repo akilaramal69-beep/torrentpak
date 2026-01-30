@@ -97,6 +97,7 @@ def search_torrents():
         return jsonify({'error': 'No query provided'}), 400
 
     if not JACKETT_URL or not JACKETT_API_KEY:
+        print("❌ Search failed: Jackett not configured in .env")
         return jsonify({'error': 'Jackett not configured'}), 500
 
     try:
@@ -106,9 +107,16 @@ def search_torrents():
             'Query': query,
             'Category': category
         }
-        response = requests.get(url, params=params)
+        print(f"🔍 Searching Jackett: {url} (query: {query})")
+        response = requests.get(url, params=params, timeout=10)
+        
+        if response.status_code != 200:
+            print(f"❌ Jackett returned error {response.status_code}: {response.text}")
+            return jsonify({'error': f'Jackett error: {response.status_code}'}), 502
+            
         return jsonify(response.json())
     except Exception as e:
+        print(f"❌ Search Exception: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/user', methods=['GET'])
