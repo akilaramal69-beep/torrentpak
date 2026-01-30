@@ -12,52 +12,53 @@ A white-labeled, high-performance torrent search and cloud download platform. Se
 
 ---
 
-## 🚀 Deployment Guide (VPS)
+## 🛠️ Local Development
 
-### 1. Prerequisites
-- A VPS with Docker and Docker Compose installed.
-- A [PikPak](https://mypikpak.com) account.
-- A [Jackett](https://github.com/Jackett/Jackett) instance running.
-
-### 2. Setup Directory
+### 1. Clone & Install Dependencies
 ```bash
-mkdir magnet-cloud && cd magnet-cloud
-# Copy project files here
+git clone https://github.com/akilaramal69-beep/torrentpak.git
+cd torrentpak
+npm install
+pip install -r requirements.txt
 ```
 
-### 3. Configure Environment
-Create a `.env` file:
+### 2. Build the UI
+```bash
+npm run build
+```
+
+### 3. Setup Environment
+Create a `.env` file from `.env.example`:
 ```env
 PIKPAK_EMAIL=your-email@example.com
 PIKPAK_PASSWORD=your-password
 JACKETT_URL=http://your-jackett-ip:9117
 JACKETT_API_KEY=your-jackett-api-key
-SECRET_KEY=generate-a-random-string
 ```
 
-### 4. Build and Run
+### 4. Start the Server
 ```bash
-docker-compose up -d --build
+python app.py
 ```
-The app will be available at `http://your-vps-ip:5000`.
+Visit `http://localhost:5000`.
 
 ---
 
-## 🛠️ Local Development
+## 🚀 VPS Deployment (Docker)
 
-### 1. Install Backend
-```bash
-pip install -r requirements.txt
-python app.py
-```
+This is the recommended way to deploy for production.
 
-### 2. Install Frontend
+1. **Clone the repo** on your VPS.
+2. **Create `.env`** with your credentials.
+3. **Build and start**:
 ```bash
-npm install
-npm run dev
+docker-compose up -d --build
 ```
+The app will automatically build the frontend inside the container and serve it via Gunicorn.
 
 ---
 
 ## 🔒 Security Note
-This application uses a global cloud account defined in the `.env` file. Any user who has access to the web interface can view and download files in that account. Do not share the URL publicly without adding an authentication layer (like Basic Auth or Nginx Proxy Manager auth) if privacy is required.
+This application uses a global cloud account. Anyone with the URL can view/download files. 
+**Recommendation**: Use a reverse proxy (like Nginx) to add a password (Basic Auth) or use Cloudflare Access to protect your instance.
+
