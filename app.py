@@ -21,8 +21,8 @@ PIKPAK_EMAIL = os.getenv('PIKPAK_EMAIL')
 PIKPAK_PASSWORD = os.getenv('PIKPAK_PASSWORD')
 
 # Jackett Configuration
-JACKETT_URL = os.getenv('JACKETT_URL')
-JACKETT_API_KEY = os.getenv('JACKETT_API_KEY')
+JACKETT_URL = os.getenv('JACKETT_URL') or os.getenv('VITE_JACKETT_URL')
+JACKETT_API_KEY = os.getenv('JACKETT_API_KEY') or os.getenv('VITE_JACKETT_API_KEY')
 
 # Global PikPak Client
 pikpak_client = None
@@ -156,10 +156,11 @@ def search_torrents():
                 'apikey': JACKETT_API_KEY,
                 'Query': query
             }
-            if category:
+            # Only send category if it's a valid numeric ID (not 'all' or empty)
+            if category and category != 'all' and category != '':
                 params['Category[]'] = category
                 
-            print(f"🔍 Searching Jackett: {url}", file=sys.stderr)
+            print(f"🔍 Searching Jackett: {url} (query: {query})", file=sys.stderr)
             response = requests.get(url, params=params, timeout=15)
             
             if response.status_code == 200:
