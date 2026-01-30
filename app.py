@@ -93,9 +93,18 @@ import sys
 
 @app.route('/api/debug', methods=['GET'])
 def debug_config():
+    test_result = "Not tested"
+    try:
+        # Quick test to see if we can reach Jackett internally
+        resp = requests.get("http://jackett:9117/api/v2.0/indexers/all/results?apikey=" + (JACKETT_API_KEY or ""), timeout=5)
+        test_result = f"Connected (Status: {resp.status_code})"
+    except Exception as e:
+        test_result = f"Failed: {str(e)}"
+
     return jsonify({
-        'jackett_url': JACKETT_URL,
+        'jackett_url_env': JACKETT_URL,
         'jackett_key_set': bool(JACKETT_API_KEY),
+        'internal_test': test_result,
         'pikpak_auth': bool(pikpak_client),
         'server_time': datetime.now().isoformat()
     })
@@ -165,23 +174,29 @@ def search_torrents():
                 if category and category != 'all' and category != '':
                     params['Category[]'] = category
                     
-                print(f"🔍 Trying Jackett: {url}", file=sys.stderr)
-                response = requests.get(url, params=params, timeout=10)
+                print(f"🔍 Trying Jackett: {url} (query: {query})", file=sys.stderr, flush=True)
+                # verify=False helps with self-signed certs inside docker networks
+                response = requests.get(url, params=params, timeout=15, verify=False)
                 
                 if response.status_code == 200:
-                    data = response.json()
-                    data = enrich_results(data)
-                    results = data.get('Results', [])
-                    print(f"✅ SUCCESS: Found {len(results)} results using {url}", file=sys.stderr)
-                    return jsonify(data)
+                    try:
+                        data = response.json()
+                        data = enrich_results(data)
+                        results = data.get('Results', [])
+                        print(f"✅ SUCCESS: Found {len(results)} results using {url}", file=sys.stderr, flush=True)
+                        return jsonify(data)
+                    except Exception as je:
+                        print(f"❌ JSON Parse Error from {url}: {str(je)}", file=sys.stderr, flush=True)
+                        last_error = f"JSON Error: {str(je)}"
+                        continue
                 
                 if response.status_code == 404:
                     continue
                 
-                print(f"⚠️ {url} returned {response.status_code}", file=sys.stderr)
+                print(f"⚠️ {url} returned {response.status_code}: {response.text[:200]}", file=sys.stderr, flush=True)
                 last_error = f"Jackett error {response.status_code}"
             except Exception as e:
-                print(f"⚠️ {base}{path} failed: {str(e)}", file=sys.stderr)
+                print(f"⚠️ {url} failed: {str(e)}", file=sys.stderr, flush=True)
                 last_error = str(e)
 
     return jsonify({'error': last_error or "Could not reach Jackett. Check indexers and API key."}), 502
