@@ -43,41 +43,41 @@ const SeederPeers: React.FC<{ value: number, type: 'seeders' | 'peers' }> = ({ v
 };
 
 const SkeletonRow: React.FC = () => (
-  <tr className="border-b border-slate-800 animate-pulse">
-    <td className="px-4 py-4"><div className="h-4 bg-slate-700 rounded w-24"></div></td>
-    <td className="px-4 py-4">
-      <div className="h-4 bg-slate-700 rounded w-3/4"></div>
-      <div className="h-3 bg-slate-700 rounded w-1/4 mt-2"></div>
+  <tr className="border-b border-slate-700/50 animate-pulse">
+    <td className="px-6 py-4"><div className="h-4 bg-slate-700/50 rounded w-24"></div></td>
+    <td className="px-6 py-4">
+      <div className="h-4 bg-slate-700/50 rounded w-3/4"></div>
+      <div className="h-3 bg-slate-700/50 rounded w-1/4 mt-2"></div>
     </td>
-    <td className="px-4 py-4"><div className="h-4 bg-slate-700 rounded w-16"></div></td>
-    <td className="px-4 py-4"><div className="h-4 bg-slate-700 rounded w-12"></div></td>
-    <td className="px-4 py-4"><div className="h-4 bg-slate-700 rounded w-12"></div></td>
-    <td className="px-4 py-4"><div className="h-4 bg-slate-700 rounded w-20"></div></td>
-    <td className="px-4 py-4">
-      <div className="flex gap-2">
-        <div className="h-8 w-8 bg-slate-700 rounded-full"></div>
-        <div className="h-8 w-8 bg-slate-700 rounded-full"></div>
+    <td className="px-6 py-4"><div className="h-4 bg-slate-700/50 rounded w-16"></div></td>
+    <td className="px-6 py-4"><div className="h-4 bg-slate-700/50 rounded w-12"></div></td>
+    <td className="px-6 py-4"><div className="h-4 bg-slate-700/50 rounded w-12"></div></td>
+    <td className="px-6 py-4"><div className="h-4 bg-slate-700/50 rounded w-20"></div></td>
+    <td className="px-6 py-4">
+      <div className="flex gap-2 justify-end">
+        <div className="h-8 w-8 bg-slate-700/50 rounded-lg"></div>
+        <div className="h-8 w-8 bg-slate-700/50 rounded-lg"></div>
       </div>
     </td>
   </tr>
 )
 
 const SkeletonCard: React.FC = () => (
-  <div className="bg-slate-800 border border-slate-700 rounded-lg shadow-lg p-4 animate-pulse">
-    <div className="h-5 bg-slate-700 rounded w-3/4 mb-2"></div>
-    <div className="h-3 bg-slate-700 rounded w-1/3 mb-3"></div>
-    <div className="flex justify-between border-y border-slate-700 py-3 mb-3">
-      <div className="h-4 bg-slate-700 rounded w-1/4"></div>
-      <div className="h-4 bg-slate-700 rounded w-1/4"></div>
+  <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl shadow-lg p-4 animate-pulse">
+    <div className="h-5 bg-slate-700/50 rounded w-3/4 mb-2"></div>
+    <div className="h-3 bg-slate-700/50 rounded w-1/3 mb-3"></div>
+    <div className="flex justify-between border-y border-slate-700/50 py-3 mb-3">
+      <div className="h-4 bg-slate-700/50 rounded w-1/4"></div>
+      <div className="h-4 bg-slate-700/50 rounded w-1/4"></div>
     </div>
     <div className="flex justify-around mb-4">
-      <div className="h-4 bg-slate-700 rounded w-1/5"></div>
-      <div className="h-4 bg-slate-700 rounded w-1/5"></div>
-      <div className="h-4 bg-slate-700 rounded w-1/5"></div>
+      <div className="h-4 bg-slate-700/50 rounded w-1/5"></div>
+      <div className="h-4 bg-slate-700/50 rounded w-1/5"></div>
+      <div className="h-4 bg-slate-700/50 rounded w-1/5"></div>
     </div>
     <div className="flex gap-2">
-      <div className="h-10 bg-slate-700 rounded-md w-full"></div>
-      <div className="h-10 bg-slate-700 rounded-md w-12"></div>
+      <div className="h-10 bg-slate-700/50 rounded-lg w-full"></div>
+      <div className="h-10 bg-slate-700/50 rounded-lg w-12"></div>
     </div>
   </div>
 );
@@ -89,6 +89,9 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
   onAddToCloud
 }) => {
   const [activeCopyMagnetId, setActiveCopyMagnetId] = useState<number | null>(null);
+
+  // Filter out any invalid results before rendering (safety check)
+  const currentResults = results.filter(r => r && r.Id);
 
   const sortOptions: { key: keyof TorrentResult; label: string }[] = [
     { key: 'Seeders', label: 'Seeders' },
@@ -140,11 +143,11 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
     className?: string;
     children: React.ReactNode;
   }> = ({ sortKey, children, className }) => (
-    <th scope="col" className={`px-4 py-3 whitespace-nowrap ${className || ''}`}>
+    <th scope="col" className={`px-6 py-4 whitespace-nowrap tracking-wider ${className || ''}`}>
       <button
         type="button"
         onClick={() => requestSort(sortKey)}
-        className="flex items-center gap-1.5 group text-slate-400 uppercase"
+        className="flex items-center gap-1.5 group text-slate-400 uppercase hover:text-sky-400 transition-colors"
       >
         {children}
         <span className={sortConfig?.key === sortKey ? 'text-sky-400' : 'opacity-0 group-hover:opacity-100 transition-opacity'}>
@@ -161,20 +164,20 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
     return (
       <>
         {/* Desktop Skeleton */}
-        <div className="hidden md:block bg-slate-800/50 border border-slate-700 rounded-lg overflow-x-auto">
+        <div className="hidden md:block bg-slate-800/40 border border-slate-700/50 rounded-xl overflow-x-auto backdrop-blur-sm">
           <table className="w-full text-left">
-            <thead className="text-xs text-slate-400 uppercase bg-slate-800">
+            <thead className="text-xs text-slate-400 uppercase bg-slate-900/50">
               <tr>
-                <th scope="col" className="px-4 py-3">Category</th>
-                <th scope="col" className="px-4 py-3">Title</th>
-                <th scope="col" className="px-4 py-3">Size</th>
-                <th scope="col" className="px-4 py-3">Seeders</th>
-                <th scope="col" className="px-4 py-3">Peers</th>
-                <th scope="col" className="px-4 py-3">Date</th>
-                <th scope="col" className="px-4 py-3">Links</th>
+                <th scope="col" className="px-6 py-4">Category</th>
+                <th scope="col" className="px-6 py-4">Title</th>
+                <th scope="col" className="px-6 py-4">Size</th>
+                <th scope="col" className="px-6 py-4">Seeders</th>
+                <th scope="col" className="px-6 py-4">Peers</th>
+                <th scope="col" className="px-6 py-4">Date</th>
+                <th scope="col" className="px-6 py-4">Links</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-700/50">
               {[...Array(10)].map((_, i) => <SkeletonRow key={i} />)}
             </tbody>
           </table>
@@ -190,7 +193,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
   if (!hasSearched) {
     if (needsConfiguration) {
       return (
-        <div className="text-center py-16 px-6 bg-slate-800/50 border border-dashed border-slate-700 rounded-lg">
+        <div className="text-center py-16 px-6 bg-slate-800/30 backdrop-blur-sm border border-dashed border-slate-700/50 rounded-xl">
           <h3 className="text-xl font-semibold text-slate-300">Configuration Required</h3>
           <p className="text-slate-500 mt-2">The Jackett server URL and API Key must be configured for the app to function.</p>
           <p className="text-slate-500 mt-1">Please provide them via environment variables.</p>
@@ -198,7 +201,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
       );
     }
     return (
-      <div className="text-center py-16 px-6 bg-slate-800/50 border border-dashed border-slate-700 rounded-lg">
+      <div className="text-center py-16 px-6 bg-slate-800/30 backdrop-blur-sm border border-dashed border-slate-700/50 rounded-xl">
         <h3 className="text-xl font-semibold text-slate-300">Ready to search?</h3>
         <p className="text-slate-500 mt-2">Enter a query above to find torrents.</p>
       </div>
@@ -207,7 +210,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
 
   if (results.length === 0 && totalResults === 0) {
     return (
-      <div className="text-center py-16 px-6 bg-slate-800/50 border border-dashed border-slate-700 rounded-lg">
+      <div className="text-center py-16 px-6 bg-slate-800/30 backdrop-blur-sm border border-dashed border-slate-700/50 rounded-xl">
         <h3 className="text-xl font-semibold text-slate-300">No Results Found</h3>
         <p className="text-slate-500 mt-2">Your search did not match any torrents. Try a different query.</p>
       </div>
@@ -218,15 +221,15 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
     <>
       {/* Mobile Sort Controls */}
       {totalResults > 0 && (
-        <div className="md:hidden flex items-center justify-between mb-4">
+        <div className="md:hidden flex items-center justify-between mb-4 px-1">
           <div className="flex items-center gap-2">
-            <label htmlFor="sort-select" className="text-sm text-slate-400">Sort by:</label>
+            <label htmlFor="sort-select" className="text-sm text-slate-400 font-medium">Sort by:</label>
             <div className="relative">
               <select
                 id="sort-select"
                 value={sortConfig.key}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => requestSort(e.target.value as keyof TorrentResult)}
-                className="pl-3 pr-8 py-2 text-sm bg-slate-700 border border-slate-600 rounded-md text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 appearance-none"
+                className="pl-3 pr-8 py-2 text-sm bg-slate-800/80 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 appearance-none shadow-sm"
                 aria-label="Sort by property"
               >
                 {sortOptions.map(opt => (
@@ -240,7 +243,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
           </div>
           <button
             onClick={() => requestSort(sortConfig.key)}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-slate-700 text-slate-200 rounded-md hover:bg-slate-600"
+            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-slate-800/80 text-slate-200 rounded-lg border border-slate-700 hover:bg-slate-700 shadow-sm transition-colors"
             aria-label={`Current sort direction is ${sortConfig.direction}. Click to toggle.`}
           >
             {sortConfig.direction === 'ascending' ? <SortAscIcon /> : <SortDescIcon />}
@@ -248,10 +251,10 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
         </div>
       )}
 
-      {/* Desktop Table View */}
-      <div className="hidden md:block bg-slate-800/50 border border-slate-700 rounded-lg overflow-x-auto shadow-lg">
-        <table className="w-full text-left text-sm">
-          <thead className="text-xs bg-slate-800">
+      {/* Desktop/Tablet Table View */}
+      <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-700/50 bg-slate-800/40 backdrop-blur-sm shadow-xl">
+        <table className="w-full text-left text-sm text-slate-300">
+          <thead className="bg-slate-900/50 text-xs uppercase text-slate-400 font-medium">
             <tr>
               <SortableHeaderCell sortKey="CategoryDesc">Category</SortableHeaderCell>
               <SortableHeaderCell sortKey="Title">Title</SortableHeaderCell>
@@ -259,65 +262,74 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
               <SortableHeaderCell sortKey="Seeders">Seeders</SortableHeaderCell>
               <SortableHeaderCell sortKey="Peers">Peers</SortableHeaderCell>
               <SortableHeaderCell sortKey="PublishDate">Date</SortableHeaderCell>
-              <th scope="col" className="px-4 py-3 uppercase text-slate-400">Links</th>
+              <th scope="col" className="px-6 py-4 tracking-wider text-right">Actions</th>
             </tr>
           </thead>
-          <tbody>
-            {results.map((result) => (
-              <tr key={result.Id} className="border-b border-slate-800 hover:bg-slate-800/60 transition-colors duration-200">
-                <td className="px-4 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-2 text-slate-400">
+          <tbody className="divide-y divide-slate-700/50">
+            {currentResults.map((result) => (
+              <tr key={result.Id} className="hover:bg-slate-700/30 transition-colors duration-150 group">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center gap-2 text-slate-400 group-hover:text-slate-300 transition-colors">
                     <CategoryIcon />
                     {result.CategoryDesc}
                   </div>
                 </td>
-                <td className="px-4 py-4 max-w-sm xl:max-w-md">
-                  <p className="font-semibold text-slate-200 break-words" title={result.Title}>{result.Title}</p>
-                  <p className="text-xs text-slate-500">{result.Tracker}</p>
+                <td className="px-6 py-4 max-w-md">
+                  <div className="flex flex-col gap-1">
+                    <span className="font-medium text-slate-200 line-clamp-2 leading-snug group-hover:text-sky-300 transition-colors" title={result.Title}>{result.Title}</span>
+                    <span className="text-xs text-slate-500">{result.Indexer}</span>
+                  </div>
                 </td>
-                <td className="px-4 py-4 whitespace-nowrap text-slate-300 font-mono">{formatBytes(result.Size)}</td>
-                <td className="px-4 py-4 whitespace-nowrap"><SeederPeers value={result.Seeders} type="seeders" /></td>
-                <td className="px-4 py-4 whitespace-nowrap"><SeederPeers value={result.Peers} type="peers" /></td>
-                <td className="px-4 py-4 whitespace-nowrap text-slate-400 font-mono">
+                <td className="px-6 py-4 font-mono text-slate-400 whitespace-nowrap">{formatBytes(result.Size)}</td>
+                <td className="px-6 py-4 text-center">
+                  <SeederPeers value={result.Seeders} type="seeders" />
+                </td>
+                <td className="px-6 py-4 text-center">
+                  <SeederPeers value={result.Peers} type="peers" />
+                </td>
+                <td className="px-6 py-4 text-center font-mono text-xs text-slate-500 whitespace-nowrap">
                   {new Date(result.PublishDate).toLocaleDateString()}
                 </td>
-                <td className="px-4 py-4">
-                  {activeCopyMagnetId === result.Id ? (
-                    <div className="flex items-center gap-1 w-full">
-                      <input
-                        type="text"
-                        readOnly
-                        value={result.MagnetUri || ''}
-                        className="w-full min-w-0 flex-1 text-xs bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-slate-300 font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
-                        ref={(input: HTMLInputElement | null) => input?.select()}
-                        onBlur={() => setActiveCopyMagnetId(null)}
-                        aria-label="Magnet link"
-                      />
-                      <button
-                        onClick={() => setActiveCopyMagnetId(null)}
-                        title="Close"
-                        className="p-2 text-slate-400 rounded-full hover:text-sky-400 hover:bg-slate-700"
-                        aria-label="Close copy input"
-                      >
-                        <CloseIcon />
-                      </button>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                    {/* Copy Magnet Button */}
+                    <div className="relative">
+                      {activeCopyMagnetId === result.Id ? (
+                        <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center bg-slate-900 border border-slate-600 rounded-lg shadow-lg z-10 p-1 animate-in fade-in zoom-in duration-200">
+                          <input
+                            type="text"
+                            readOnly
+                            value={result.MagnetUri || ''}
+                            className="w-48 text-xs bg-transparent border-none text-slate-300 px-2 focus:ring-0"
+                            autoFocus
+                            onBlur={() => setActiveCopyMagnetId(null)}
+                          />
+                          <button onClick={() => setActiveCopyMagnetId(null)} className="p-1 text-slate-400 hover:text-white rounded-md">
+                            <CloseIcon />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleCopyMagnet(result.MagnetUri, result.Id)}
+                          disabled={!result.MagnetUri}
+                          title="Copy Magnet Link"
+                          className="p-2 text-slate-400 hover:text-sky-400 hover:bg-sky-400/10 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                        >
+                          <ClipboardCopyIcon />
+                        </button>
+                      )}
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleCopyMagnet(result.MagnetUri, result.Id)}
-                        title={result.MagnetUri ? "Copy Magnet Link" : "Magnet link not available"}
-                        disabled={!result.MagnetUri}
-                        className="p-2 text-slate-400 rounded-full transition-all duration-200 enabled:hover:text-sky-400 enabled:hover:bg-slate-700 disabled:text-slate-600 disabled:cursor-not-allowed"
-                        aria-label="Copy magnet link"
-                      >
-                        <ClipboardCopyIcon />
-                      </button>
-                      <a href={result.Details} target="_blank" rel="noopener noreferrer" title="View on Tracker" className="p-2 text-slate-400 hover:text-sky-400 hover:bg-slate-700 rounded-full transition-all duration-200" aria-label="View on Tracker">
-                        <ExternalLinkIcon />
-                      </a>
-                    </div>
-                  )}
+
+                    <a
+                      href={result.Details}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 text-slate-400 hover:text-sky-400 hover:bg-sky-400/10 rounded-lg transition-all"
+                      title="View on Tracker"
+                    >
+                      <ExternalLinkIcon />
+                    </a>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -326,90 +338,77 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
       </div>
 
       {/* Mobile Card View */}
-      <div className="block md:hidden space-y-4">
-        {results.map((result) => (
-          <div key={result.Id} className="bg-slate-800 border border-slate-700 rounded-lg shadow-lg p-4 flex flex-col gap-3">
-            <div>
-              <p className="font-semibold text-slate-200 break-words">{result.Title}</p>
-              <p className="text-xs text-slate-500 mt-1">{result.Tracker}</p>
+      <div className="md:hidden flex flex-col gap-4">
+        {currentResults.map((result) => (
+          <div key={result.Id} className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 shadow-lg active:scale-[0.99] transition-transform">
+            <div className="mb-3">
+              <h3 className="font-semibold text-slate-100 leading-snug mb-1 line-clamp-2">{result.Title}</h3>
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <span className="bg-slate-900/50 px-2 py-0.5 rounded border border-slate-700/50">{result.Indexer}</span>
+                <span className="truncate max-w-[120px]">{result.CategoryDesc}</span>
+                <span className="ml-auto font-mono">{new Date(result.PublishDate).toLocaleDateString()}</span>
+              </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs text-slate-400 border-y border-slate-700 py-3">
-              <div className="flex items-center gap-2 truncate shrink">
-                <CategoryIcon />
-                <span className="truncate">{result.CategoryDesc}</span>
+            <div className="grid grid-cols-3 gap-2 mb-4 bg-slate-900/30 rounded-lg p-2 border border-slate-700/30">
+              <div className="flex flex-col items-center">
+                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Size</span>
+                <span className="font-mono text-sm text-slate-300">{formatBytes(result.Size)}</span>
               </div>
-              <span className="font-mono whitespace-nowrap pl-2">{new Date(result.PublishDate).toLocaleDateString()}</span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="flex flex-col items-center justify-center gap-1 text-slate-300">
-                <div className="flex items-center gap-1.5"><SizeIcon /> <span className="text-xs text-slate-400">Size</span></div>
-                <div className="font-mono text-sm">{formatBytes(result.Size)}</div>
-              </div>
-              <div className="flex flex-col items-center justify-center gap-1">
-                <span className="text-xs text-slate-400">Seeders</span>
+              <div className="flex flex-col items-center border-l border-r border-slate-700/30">
+                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Seeds</span>
                 <SeederPeers value={result.Seeders} type="seeders" />
               </div>
-              <div className="flex flex-col items-center justify-center gap-1">
-                <span className="text-xs text-slate-400">Peers</span>
+              <div className="flex flex-col items-center">
+                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Peers</span>
                 <SeederPeers value={result.Peers} type="peers" />
               </div>
             </div>
 
-            <div className="mt-1">
-              {activeCopyMagnetId === result.Id ? (
-                <div className="flex items-center gap-1 w-full">
-                  <input
-                    type="text"
-                    readOnly
-                    value={result.MagnetUri || ''}
-                    className="w-full min-w-0 flex-1 text-xs bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-slate-300 font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
-                    ref={(input: HTMLInputElement | null) => input?.select()}
-                    onBlur={() => setActiveCopyMagnetId(null)}
-                    aria-label="Magnet link"
-                  />
-                  <button onClick={() => setActiveCopyMagnetId(null)} title="Close" className="p-2 text-slate-400 rounded-full hover:text-sky-400 hover:bg-slate-700" aria-label="Close copy input" >
-                    <CloseIcon />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <button onClick={() => handleCopyMagnet(result.MagnetUri, result.Id)} title={result.MagnetUri ? "Copy Magnet Link" : "Magnet link not available"} disabled={!result.MagnetUri} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm bg-sky-600 text-white rounded-md font-semibold hover:bg-sky-500 disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors" aria-label="Copy magnet link" >
-                    <ClipboardCopyIcon />
-                    <span>Copy</span>
-                  </button>
-                  {/* Cloud button removed */}
-                  <a href={result.Details} target="_blank" rel="noopener noreferrer" title="View on Tracker" className="p-2.5 text-slate-400 bg-slate-700 hover:text-sky-400 hover:bg-slate-600 rounded-md transition-all duration-200" aria-label="View on Tracker" >
-                    <ExternalLinkIcon />
-                  </a>
-                </div>
-              )}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => handleCopyMagnet(result.MagnetUri, result.Id)}
+                disabled={!result.MagnetUri}
+                className="flex-1 bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-sky-900/20 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ClipboardCopyIcon />
+                {activeCopyMagnetId === result.Id ? 'Copied!' : 'Copy Magnet'}
+              </button>
+              <a
+                href={result.Details}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-slate-700 hover:bg-slate-600 text-slate-300 py-2.5 px-4 rounded-lg flex items-center justify-center transition-colors border border-slate-600"
+                aria-label="View on Tracker"
+              >
+                <ExternalLinkIcon />
+              </a>
             </div>
           </div>
         ))}
       </div>
 
       {totalPages > 1 && (
-        <nav className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 text-sm text-slate-400" aria-label="Pagination">
-          <div className="text-center md:text-left">
-            Showing <span className="font-semibold text-slate-200">{(currentPage - 1) * 50 + 1}</span> to <span className="font-semibold text-slate-200">{Math.min(currentPage * 50, totalResults)}</span> of <span className="font-semibold text-slate-200">{totalResults}</span> results
+        <nav className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 px-2" aria-label="Pagination">
+          <div className="text-sm text-slate-400 text-center sm:text-left">
+            Showing <span className="font-semibold text-slate-200">{(currentPage - 1) * 50 + 1}</span> to <span className="font-semibold text-slate-200">{Math.min(currentPage * 50, totalResults)}</span> of <span className="font-semibold text-slate-200">{totalResults}</span>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-2 bg-slate-800/40 p-1 rounded-lg border border-slate-700/50 backdrop-blur-sm">
             <button
               onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="px-4 py-2 bg-slate-700 rounded-md hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-md text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
             >
               Previous
             </button>
-            <span className="px-2">
-              Page <span className="font-semibold text-slate-200">{currentPage}</span> of <span className="font-semibold text-slate-200">{totalPages}</span>
+            <span className="px-3 py-1 bg-slate-700/50 rounded text-sm text-sky-400 font-bold min-w-[3rem] text-center border border-slate-600/50">
+              {currentPage}
             </span>
             <button
               onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="px-4 py-2 bg-slate-700 rounded-md hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-md text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
             >
               Next
             </button>

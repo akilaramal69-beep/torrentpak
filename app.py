@@ -213,6 +213,10 @@ def search_torrents():
     if not query:
         return jsonify({'error': 'No query provided'}), 400
 
+    # Sanitize query for better Jackett matching
+    # Replace dots with spaces (common in filenames) and strip excess whitespace
+    query = query.replace('.', ' ').strip()
+    
     if not JACKETT_URL or not JACKETT_API_KEY:
         print("❌ Search failed: Jackett key or URL missing", file=sys.stderr)
         return jsonify({'error': 'Jackett not configured'}), 500

@@ -102,22 +102,22 @@ function App() {
                 {isCloudOpen && <CloudDashboard isOpen={isCloudOpen} onClose={() => setIsCloudOpen(false)} />}
             </Suspense>
 
-            <div className="min-h-screen bg-slate-900 text-slate-200 font-sans">
-                <div className="container mx-auto px-4 py-8">
-                    <header className="flex flex-col items-center justify-center text-center mb-8">
+            <div className="min-h-screen bg-slate-900 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-800 via-slate-900 to-black text-slate-200 font-sans selection:bg-sky-500/30">
+                <div className="container mx-auto px-4 py-8 md:py-12">
+                    <header className="flex flex-col items-center justify-center text-center mb-12 relative z-10">
                         <div className="absolute top-4 right-4">
                             {/* Cloud Drive button removed */}
                         </div>
 
-                        <div className="relative w-full max-w-3xl flex items-center justify-center">
-                            <div className="flex items-center gap-4">
+                        <div className="relative w-full max-w-4xl flex flex-col items-center justify-center p-6 rounded-2xl bg-slate-800/30 backdrop-blur-md border border-slate-700/50 shadow-xl">
+                            <div className="flex items-center gap-4 mb-2">
                                 <LogoIcon />
-                                <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-300">
+                                <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-cyan-300 to-teal-200 drop-shadow-lg">
                                     TorrentWave
                                 </h1>
                             </div>
+                            <p className="text-slate-400 text-lg font-light tracking-wide">Sailing high seas to find torrents.</p>
                         </div>
-                        <p className="text-slate-400 mt-2">Sailing high seas to find torrents.</p>
                     </header>
 
                     <main>
