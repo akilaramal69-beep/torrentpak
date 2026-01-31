@@ -8,12 +8,13 @@ A private, high-performance torrent search engine. Rapidly find verified magnet 
 - **Clean Interface**: Focused search experience without bloat.
 - **Mobile Friendly**: Fully responsive design for searching on any device.
 - **Private Setup**: Runs entirely on your own server.
+- **FlareSolverr Included**: Built-in Cloudflare bypass for supported indexers.
 
 ---
 
 ## 🚀 All-in-One Deployment (Recommended)
 
-This setup runs **TorrentWave**, **Jackett**, and **Caddy** (for SSL) together on your VPS using Docker.
+This setup runs **TorrentWave**, **Jackett**, **FlareSolverr**, and **Caddy** (for SSL) together on your VPS using Docker.
 
 ### 1. Clone the repository
 ```bash
