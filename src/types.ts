@@ -1,6 +1,7 @@
 export interface TorrentResult {
   Id: number;
   Tracker: string;
+  Indexer?: string;
   CategoryDesc: string;
   Title: string;
   Link: string;
