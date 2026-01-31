@@ -150,7 +150,7 @@ function App() {
                         )}
 
                         <ResultsTable
-                            results={results}
+                            results={results.slice((currentPage - 1) * 50, currentPage * 50)}
                             isLoading={isLoading}
                             hasSearched={hasSearched}
                             needsConfiguration={false}
