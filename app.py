@@ -175,7 +175,15 @@ def enrich_results(data):
     results = data.get('Results', [])
     tracker_query = "&".join([f"tr={urllib.parse.quote(t)}" for t in PUBLIC_TRACKERS])
     
-    for res in results:
+    for idx, res in enumerate(results):
+        # Generate an ID if missing (crucial for frontend keys/filtering)
+        if 'Id' not in res:
+             res['Id'] = idx + 1
+             
+        # Ensure Indexer exists (Jackett usually sends Tracker)
+        if 'Indexer' not in res:
+            res['Indexer'] = res.get('Tracker', 'Unknown')
+            
         # Normalize fields
         jackett_magnet = res.get('MagnetUri')
         link = res.get('Link')
