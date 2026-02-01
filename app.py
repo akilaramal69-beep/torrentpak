@@ -190,8 +190,8 @@ def search_torrents():
     query = re.sub(r'\s+', ' ', query).strip()
     
     try:
-        if not JACKETT_URL or not JACKETT_API_KEY:
-            print("❌ Search failed: Jackett key or URL missing", file=sys.stderr)
+        if not JACKETT_API_KEY:
+            print("❌ Search failed: Jackett API key missing", file=sys.stderr)
             return jsonify({'error': 'Jackett not configured'}), 500
 
         # SPEED: Try internal Docker URL first (fastest), then configured URL
