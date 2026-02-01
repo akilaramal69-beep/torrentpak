@@ -25,8 +25,6 @@ cd torrentpak
 ### 2. Configure Environment
 Create a `.env` file from `.env.example`:
 ```env
-PIKPAK_EMAIL=your-email@example.com
-PIKPAK_PASSWORD=your-password
 JACKETT_API_KEY=your-jackett-api-key # Get this after step 4
 DOMAIN=yourdomain.com                 # Your VPS domain/IP
 EMAIL=your-email@example.com          # For SSL certificates
