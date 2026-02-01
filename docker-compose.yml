@@ -55,6 +55,44 @@ services:
     depends_on:
       - app
 
+  # Bitmagnet - Self-hosted DHT torrent indexer
+  bitmagnet:
+    image: ghcr.io/bitmagnet-io/bitmagnet:latest
+    container_name: bitmagnet
+    ports:
+      - "3333:3333"   # Web UI & API
+      - "3334:3334/tcp"  # BitTorrent port
+      - "3334:3334/udp"  # DHT port
+    environment:
+      - POSTGRES_HOST=bitmagnet_postgres
+      - POSTGRES_PASSWORD=bitmagnet_secret
+    depends_on:
+      bitmagnet_postgres:
+        condition: service_healthy
+    command:
+      - worker
+      - run
+      - --keys=http_server
+      - --keys=queue_server
+      - --keys=dht_crawler
+    restart: unless-stopped
+
+  bitmagnet_postgres:
+    image: postgres:16-alpine
+    container_name: bitmagnet_postgres
+    environment:
+      - POSTGRES_PASSWORD=bitmagnet_secret
+      - POSTGRES_DB=bitmagnet
+      - PGUSER=postgres
+    volumes:
+      - bitmagnet_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      start_period: 20s
+    restart: unless-stopped
+
 volumes:
   caddy_data:
   caddy_config:
+  bitmagnet_postgres_data:
