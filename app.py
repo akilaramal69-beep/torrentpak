@@ -286,13 +286,45 @@ def search_torrents():
                                 try:
                                     # Safe conversion to int for comparison (Jackett uses int IDs, frontend sends string)
                                     target_cat = int(category)
-                                    # Simple logic: If the requested category is specific (e.g. 2040), key match must be exact or at least a sub-match
-                                    # User complaint says "othcategories too". Let's enforce stricter equality.
-                                    # We allow exact match OR if the result category starts with the target category string (e.g. 2000 matches 2000, but maybe we shouldn't allow subtypes for now?)
-                                    # Let's start with strict equality + prefix match for the first 2 digits to allow subcats logic if reasonable
-                                    results = [r for r in results if str(r.get('Category', '')) == str(target_cat) or str(r.get('Category', '')).startswith(str(target_cat)[0:2])] 
-                                except:
-                                    pass # formatting error, ignore filter
+                                    
+                                    # Filter logic that handles both single int and list of ints
+                                    filtered_results = []
+                                    for r in results:
+                                        cat = r.get('Category', [])
+                                        # Normalize to list
+                                        if isinstance(cat, (int, str)):
+                                            cat_list = [int(cat)]
+                                        elif isinstance(cat, list):
+                                            cat_list = [int(c) for c in cat if str(c).isdigit()]
+                                        else:
+                                            continue # Unknown format, skip or keep? Skip to be safe/strict as requested.
+
+                                        # Check if target category is in the list
+                                        # Also allow sub-category logic? e.g. if we want 2000, 2040 (Movies HD) is ok.
+                                        # If user selected 2000 (Movies), we want to show 2000, 2010, 2020 etc.
+                                        # So if ANY category in the list starts with the target prefix (first 2 digits)
+                                        target_prefix = str(target_cat)[0:2]
+                                        
+                                        match = False
+                                        for c in cat_list:
+                                            # Exact match
+                                            if c == target_cat:
+                                                match = True
+                                                break
+                                            # Prefix match (only if target is a "parent" category like 2000, 5000)
+                                            # If target is specific like 2040, we don't want 2000.
+                                            # Simple heuristic: If target ends in 00, it's a parent.
+                                            if str(target_cat).endswith('00') and str(c).startswith(target_prefix):
+                                                match = True
+                                                break
+                                        
+                                        if match:
+                                            filtered_results.append(r)
+                                            
+                                    results = filtered_results
+                                except Exception as filter_e:
+                                    print(f"⚠️ Category filter error: {filter_e}", file=sys.stderr)
+                                    pass # Ignore filter on error to avoid empty results due to bug
 
                             # Update data with filtered results
                             data['Results'] = results
