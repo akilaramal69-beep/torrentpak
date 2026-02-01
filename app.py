@@ -23,7 +23,7 @@ cache_config = {
     "CACHE_TYPE": "RedisCache",
     "CACHE_REDIS_HOST": "redis",
     "CACHE_REDIS_PORT": 6379,
-    "CACHE_DEFAULT_TIMEOUT": 600  # Cache search results for 10 minutes
+    "CACHE_DEFAULT_TIMEOUT": 1800  # Cache search results for 30 minutes
 }
 cache = Cache(app, config=cache_config)
 
@@ -194,106 +194,103 @@ def search_torrents():
             print("❌ Search failed: Jackett key or URL missing", file=sys.stderr)
             return jsonify({'error': 'Jackett not configured'}), 500
 
-        # Smart fallback: Try the configured URL first, then the internal Docker URL
-        base_urls = []
-        if JACKETT_URL:
+        # SPEED: Try internal Docker URL first (fastest), then configured URL
+        base_urls = ["http://jackett:9117"]
+        if JACKETT_URL and "jackett:9117" not in JACKETT_URL:
             base_urls.append(JACKETT_URL.rstrip('/'))
-        base_urls.append("http://jackett:9117")
         
-        paths = ["/api/v2.0/indexers/all/results", "/jackett/api/v2.0/indexers/all/results"]
+        # Single path - standard Jackett API
+        path = "/api/v2.0/indexers/all/results"
         
         last_error = None
         for base in base_urls:
-            for path in paths:
-                try:
-                    url = f"{base}{path}"
-                    params = {
-                        'apikey': JACKETT_API_KEY,
-                        'Query': query
-                    }
+            try:
+                url = f"{base}{path}"
+                params = {
+                    'apikey': JACKETT_API_KEY,
+                    'Query': query
+                }
+                
+                if category and category != 'all' and category != 'undefined' and category != '':
+                    params['Category[]'] = category
                     
-                    # Support both Category and Category[] just in case
-                    if category and category != 'all' and category != 'undefined' and category != '':
-                        params['Category[]'] = category
+                print(f"🔍 Searching: {url}", file=sys.stderr, flush=True)
+                response = http_session.get(url, params=params, timeout=30, verify=False)
+                
+                if response.status_code == 200:
+                    try:
+                        data = response.json()
+                        data = enrich_results(data)
+                        results = data.get('Results', [])
                         
-                    print(f"🔍 Trying Jackett: {url} (query: {query}, cat: {category})", file=sys.stderr, flush=True)
-                    # Use session for connection pooling, verify=False for self-signed certs
-                    response = http_session.get(url, params=params, timeout=30, verify=False)
-                    
-                    if response.status_code == 200:
-                        try:
-                            data = response.json()
-                            data = enrich_results(data)
-                            results = data.get('Results', [])
-                            
-                            # Strict Category Filtering (Post-Fetch)
-                            if category and category != 'all':
-                                try:
-                                    target_cat = int(category)
-                                    filtered_results = []
-                                    for r in results:
-                                        cat = r.get('Category', [])
-                                        if isinstance(cat, (int, str)):
-                                            cat_list = [int(cat)]
-                                        elif isinstance(cat, list):
-                                            cat_list = [int(c) for c in cat if str(c).isdigit()]
-                                        else:
-                                            continue
+                        # Category Filtering
+                        if category and category != 'all':
+                            try:
+                                target_cat = int(category)
+                                filtered_results = []
+                                for r in results:
+                                    cat = r.get('Category', [])
+                                    if isinstance(cat, (int, str)):
+                                        cat_list = [int(cat)]
+                                    elif isinstance(cat, list):
+                                        cat_list = [int(c) for c in cat if str(c).isdigit()]
+                                    else:
+                                        continue
 
-                                        target_prefix = str(target_cat)[0:2]
-                                        match = False
-                                        for c in cat_list:
-                                            if c == target_cat:
-                                                match = True
-                                                break
-                                            if str(target_cat).endswith('00') and str(c).startswith(target_prefix):
-                                                match = True
-                                                break
-                                        
-                                        if match:
-                                            filtered_results.append(r)
-                                            
-                                    results = filtered_results
-                                except Exception as filter_e:
-                                    print(f"⚠️ Category filter error: {filter_e}", file=sys.stderr)
-                                    pass
-
-                            # Relevance Filtering (Post-Fetch)
-                            if query:
-                                try:
-                                    query_words = [w.lower() for w in query.split() if len(w) >= 2]
+                                    target_prefix = str(target_cat)[0:2]
+                                    match = False
+                                    for c in cat_list:
+                                        if c == target_cat:
+                                            match = True
+                                            break
+                                        if str(target_cat).endswith('00') and str(c).startswith(target_prefix):
+                                            match = True
+                                            break
                                     
-                                    if query_words:
-                                        relevant_results = []
-                                        for r in results:
-                                            title = (r.get('Title', '') or '').lower()
-                                            title_normalized = re.sub(r'[._\-]+', ' ', title)
-                                            title_normalized = re.sub(r'[^\w\s]', '', title_normalized)
-                                            
-                                            matches = sum(1 for word in query_words if word in title_normalized)
-                                            required_matches = max(1, len(query_words) // 2)
-                                            
-                                            if matches >= required_matches:
-                                                relevant_results.append(r)
+                                    if match:
+                                        filtered_results.append(r)
                                         
-                                        results = relevant_results
-                                        print(f"🎯 Relevance filter: {len(relevant_results)} results match query words", file=sys.stderr)
-                                except Exception as rel_e:
-                                    print(f"⚠️ Relevance filter error: {rel_e}", file=sys.stderr)
-                                    pass
+                                results = filtered_results
+                            except Exception as filter_e:
+                                print(f"⚠️ Category filter error: {filter_e}", file=sys.stderr)
+                                pass
 
-                            data['Results'] = results
-                            print(f"✅ SUCCESS: Found {len(results)} results using {url}", file=sys.stderr, flush=True)
-                            return jsonify(data)
-                        except ValueError as e:
-                            print(f"❌ Jackett JSON decode error: {e}", file=sys.stderr)
-                            last_error = f"Invalid response from Indexer: {e}"
-                            continue
-                    
-                    last_error = f"Jackett error {response.status_code}"
-                except Exception as e:
-                    print(f"⚠️ {url} failed: {str(e)}", file=sys.stderr, flush=True)
-                    last_error = str(e)
+                        # Relevance Filtering
+                        if query:
+                            try:
+                                query_words = [w.lower() for w in query.split() if len(w) >= 2]
+                                
+                                if query_words:
+                                    relevant_results = []
+                                    for r in results:
+                                        title = (r.get('Title', '') or '').lower()
+                                        title_normalized = re.sub(r'[._\-]+', ' ', title)
+                                        title_normalized = re.sub(r'[^\w\s]', '', title_normalized)
+                                        
+                                        matches = sum(1 for word in query_words if word in title_normalized)
+                                        required_matches = max(1, len(query_words) // 2)
+                                        
+                                        if matches >= required_matches:
+                                            relevant_results.append(r)
+                                    
+                                    results = relevant_results
+                                    print(f"🎯 {len(relevant_results)} relevant results", file=sys.stderr)
+                            except Exception as rel_e:
+                                print(f"⚠️ Relevance filter error: {rel_e}", file=sys.stderr)
+                                pass
+
+                        data['Results'] = results
+                        print(f"✅ Found {len(results)} results", file=sys.stderr, flush=True)
+                        return jsonify(data)
+                    except ValueError as e:
+                        print(f"❌ JSON error: {e}", file=sys.stderr)
+                        last_error = f"Invalid response: {e}"
+                        continue
+                
+                last_error = f"Jackett error {response.status_code}"
+            except Exception as e:
+                print(f"⚠️ {base} failed: {str(e)}", file=sys.stderr, flush=True)
+                last_error = str(e)
         
     except Exception as global_e:
         print(f"🔥 CRITICAL SEARCH CRASH: {str(global_e)}", file=sys.stderr)
