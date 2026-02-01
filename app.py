@@ -285,7 +285,7 @@ def search_torrents():
                     print(f"🔍 Trying Jackett: {url} (query: {query}, cat: {category})", file=sys.stderr, flush=True)
                     # verify=False helps with self-signed certs inside docker networks
                     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
-                    response = requests.get(url, params=params, headers=headers, timeout=25, verify=False)
+                    response = requests.get(url, params=params, headers=headers, timeout=15, verify=False)
                     
                     if response.status_code == 200:
                         try:
