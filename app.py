@@ -238,9 +238,22 @@ def search_torrents():
     if not query:
         return jsonify({'error': 'No query provided'}), 400
 
-    # Sanitize query for better Jackett matching
-    # Replace dots with spaces (common in filenames) and strip excess whitespace
-    query = query.replace('.', ' ').strip()
+    # Advanced Query Normalization for better Jackett matching
+    import re
+    import unicodedata
+    
+    # Step 1: Normalize unicode characters (convert accented chars like é to e)
+    query = unicodedata.normalize('NFKD', query).encode('ascii', 'ignore').decode('ascii')
+    
+    # Step 2: Replace common filename separators with spaces
+    query = re.sub(r'[._\-]+', ' ', query)
+    
+    # Step 3: Remove most special characters but keep alphanumeric, spaces, and colons (:)
+    # Colons are useful for series notation like "Show: S01E05"
+    query = re.sub(r'[^\w\s:]', '', query)
+    
+    # Step 4: Collapse multiple spaces into one and strip
+    query = re.sub(r'\s+', ' ', query).strip()
     
     try:
         if not JACKETT_URL or not JACKETT_API_KEY:
