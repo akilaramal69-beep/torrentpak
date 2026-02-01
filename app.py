@@ -25,7 +25,7 @@ cache_config = {
     "CACHE_TYPE": "RedisCache",
     "CACHE_REDIS_HOST": "redis",
     "CACHE_REDIS_PORT": 6379,
-    "CACHE_DEFAULT_TIMEOUT": 300  # Cache search results for 5 minutes
+    "CACHE_DEFAULT_TIMEOUT": 600  # Cache search results for 10 minutes (increased for speed)
 }
 cache = Cache(app, config=cache_config)
 
@@ -45,6 +45,12 @@ if RAW_JACKETT_URL:
     JACKETT_URL = re.sub(r'^(https?):/([^/])', r'\1://\2', RAW_JACKETT_URL)
 
 JACKETT_API_KEY = os.getenv('JACKETT_API_KEY') or os.getenv('VITE_JACKETT_API_KEY')
+
+# HTTP Session for connection pooling (faster repeated requests)
+http_session = requests.Session()
+http_session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+})
 
 
 # Rate Limiting Store (IP -> last_request_time)
@@ -283,9 +289,8 @@ def search_torrents():
                         params['Category[]'] = category
                         
                     print(f"🔍 Trying Jackett: {url} (query: {query}, cat: {category})", file=sys.stderr, flush=True)
-                    # verify=False helps with self-signed certs inside docker networks
-                    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
-                    response = requests.get(url, params=params, headers=headers, timeout=15, verify=False)
+                    # Use session for connection pooling, verify=False for self-signed certs
+                    response = http_session.get(url, params=params, timeout=10, verify=False)
                     
                     if response.status_code == 200:
                         try:
