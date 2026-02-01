@@ -25,40 +25,40 @@ function App() {
         fetchCategories();
     }, []);
 
-    const fetchCategories = async () => {
-        try {
-            // Fetch categories dynamically from Jackett via backend
-            const response = await fetch('/api/categories');
-            if (response.ok) {
-                const data = await response.json();
-                if (data.categories && data.categories.length > 0) {
-                    setCategories(data.categories);
-                    return;
-                }
-            }
+    // Quirky loading messages for fun
+    const loadingMessages = [
+        "🏴‍☠️ Hoisting the sails...",
+        "🔭 Scanning the horizon...",
+        "🌊 Riding the waves...",
+        "🦜 Asking the parrot...",
+        "🗺️ Checking the treasure map...",
+        "⚓ Dropping anchor on results...",
+        "🏝️ Searching distant islands...",
+        "🧭 Calibrating the compass...",
+        "🦑 Waking up the kraken...",
+        "🚢 Full speed ahead...",
+    ];
+    const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
 
-            // Fallback to static list if API fails
-            setCategories([
-                { id: '2000', name: '🎬 Movies' },
-                { id: '5000', name: '📺 TV Shows' },
-                { id: '3000', name: '🎵 Music' },
-                { id: '4000', name: '🎮 PC Games' },
-                { id: '1000', name: '🕹️ Console' },
-                { id: '6000', name: '💿 Software' },
-                { id: '7000', name: '📚 Books' },
-                { id: '8000', name: '📦 Other' },
-            ]);
-        } catch (e) {
-            console.error("Failed to fetch categories:", e);
-            // Fallback to basic categories on error
-            setCategories([
-                { id: '2000', name: '🎬 Movies' },
-                { id: '5000', name: '📺 TV Shows' },
-                { id: '3000', name: '🎵 Music' },
-                { id: '4000', name: '🎮 Games' },
-                { id: '7000', name: '📚 Books' },
-            ]);
-        }
+    const fetchCategories = async () => {
+        // Fast static categories - no slow API calls
+        setCategories([
+            { id: '2000', name: '🎬 Movies' },
+            { id: '2040', name: '🎬 Movies HD' },
+            { id: '2045', name: '� Movies 4K' },
+            { id: '5000', name: '📺 TV Shows' },
+            { id: '5040', name: '� TV HD' },
+            { id: '5045', name: '� TV 4K' },
+            { id: '5070', name: '🎌 Anime' },
+            { id: '3000', name: '🎵 Music' },
+            { id: '3030', name: '🎧 Audiobooks' },
+            { id: '4000', name: '🎮 PC Games' },
+            { id: '1000', name: '🕹️ Console' },
+            { id: '6000', name: '� Software' },
+            { id: '7000', name: '📚 Books' },
+            { id: '7030', name: '📖 Comics' },
+            { id: '8000', name: '� Other' },
+        ]);
     };
 
     const handleSearch = async (forcedQuery?: string) => {
@@ -68,6 +68,12 @@ function App() {
         setIsLoading(true);
         setError('');
         setCurrentPage(1);
+
+        // Start rotating through fun messages
+        setLoadingMessage(loadingMessages[Math.floor(Math.random() * loadingMessages.length)]);
+        const messageInterval = setInterval(() => {
+            setLoadingMessage(loadingMessages[Math.floor(Math.random() * loadingMessages.length)]);
+        }, 1500);
 
         try {
             const response = await fetch(`/api/search?q=${encodeURIComponent(searchTerms)}&category=${selectedCategory}`);
@@ -87,6 +93,7 @@ function App() {
             setError(err.message || 'Something went wrong');
             console.error('Search error:', err);
         } finally {
+            clearInterval(messageInterval);
             setIsLoading(false);
         }
     };
@@ -163,6 +170,12 @@ function App() {
                         {error && (
                             <div className="max-w-3xl mx-auto text-center p-4 bg-red-900/50 border border-red-700 rounded-lg mb-8">
                                 <p className="text-red-400">{error}</p>
+                            </div>
+                        )}
+
+                        {isLoading && (
+                            <div className="max-w-3xl mx-auto text-center p-6 mb-8">
+                                <p className="text-xl text-cyan-400 font-medium animate-pulse">{loadingMessage}</p>
                             </div>
                         )}
 
