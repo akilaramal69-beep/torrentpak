@@ -23,5 +23,5 @@ COPY app.py .
 # Expose port
 EXPOSE 5000
 
-# Start command: 4 workers, 2 threads each, 30s timeout, keepalive 5s
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--threads", "2", "--timeout", "30", "--keep-alive", "5", "app:app"]
+# Start command: 8 workers, 2 threads each, 60s timeout, keepalive 5s, preload for speed
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "8", "--threads", "2", "--timeout", "60", "--keep-alive", "5", "--preload", "app:app"]

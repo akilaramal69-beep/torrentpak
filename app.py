@@ -215,7 +215,7 @@ def search_torrents():
                     params['Category[]'] = category
                     
                 print(f"🔍 Searching: {url}", file=sys.stderr, flush=True)
-                response = http_session.get(url, params=params, timeout=30, verify=False)
+                response = http_session.get(url, params=params, timeout=45, verify=False)
                 
                 if response.status_code == 200:
                     try:
