@@ -82,7 +82,7 @@ def search():
         url = "http://jackett:9117/api/v2.0/indexers/all/results"
         print(f"🔍 {q}", file=sys.stderr, flush=True)
         
-        resp = http_session.get(url, params=params, timeout=5, verify=False)
+        resp = http_session.get(url, params=params, timeout=30, verify=False)
         
         if resp.status_code != 200:
             return jsonify({'error': f'Jackett error {resp.status_code}'}), 502
