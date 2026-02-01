@@ -156,7 +156,7 @@ def get_categories():
                 indexers_url = f"{base}/api/v2.0/indexers/all/results/torznab"
                 caps_url = f"{base}/api/v2.0/indexers/all/results/torznab?t=caps&apikey={JACKETT_API_KEY}"
                 
-                response = http_session.get(caps_url, timeout=10, verify=False)
+                response = http_session.get(caps_url, timeout=30, verify=False)
                 
                 if response.status_code == 200:
                     # Parse XML response for categories
