@@ -1,11 +1,9 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect } from 'react';
 import SearchBar from './components/SearchBar';
 import CategoryFilter from './components/CategoryFilter';
 import ResultsTable from './components/ResultsTable';
 import ProgressBar from './components/ProgressBar';
 import { LogoIcon } from './components/Icons';
-
-const CloudDashboard = lazy(() => import('./components/CloudDashboard').then(m => ({ default: m.CloudDashboard })));
 
 import type { Category } from './types';
 
@@ -19,7 +17,6 @@ function App() {
     const [error, setError] = useState('');
     const [sortConfig, setSortConfig] = useState<{ key: any, direction: 'ascending' | 'descending' | null }>({ key: null, direction: 'ascending' });
     const [currentPage, setCurrentPage] = useState(1);
-    const [isCloudOpen, setIsCloudOpen] = useState(false);
 
     useEffect(() => {
         fetchCategories();
@@ -121,10 +118,6 @@ function App() {
     return (
         <>
             <ProgressBar isLoading={isLoading} />
-
-            <Suspense fallback={null}>
-                {isCloudOpen && <CloudDashboard isOpen={isCloudOpen} onClose={() => setIsCloudOpen(false)} />}
-            </Suspense>
 
             <div className="min-h-screen bg-slate-900 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-800 via-slate-900 to-black text-slate-200 font-sans selection:bg-sky-500/30">
                 <div className="container mx-auto px-4 py-8 md:py-12">
