@@ -11,16 +11,30 @@ import requests
 import urllib.parse
 from apscheduler.schedulers.background import BackgroundScheduler
 from functools import wraps
+from flask_caching import Cache
+import redis
 
 load_dotenv()
 
 app = Flask(__name__, static_folder='dist', static_url_path='')
-app.secret_key = os.getenv('SECRET_KEY', 'torrentwave_secret_shared_key')
+app.secret_key = os.getenv('SECRET_KEY', 'magnet_cloud_secret_shared_key')
 CORS(app)
+
+# Configure Flask-Caching with Redis
+cache_config = {
+    "CACHE_TYPE": "RedisCache",
+    "CACHE_REDIS_HOST": "redis",
+    "CACHE_REDIS_PORT": 6379,
+    "CACHE_DEFAULT_TIMEOUT": 300  # Cache search results for 5 minutes
+}
+cache = Cache(app, config=cache_config)
 
 # PikPak Configuration
 PIKPAK_EMAIL = os.getenv('PIKPAK_EMAIL')
 PIKPAK_PASSWORD = os.getenv('PIKPAK_PASSWORD')
+
+# Global PikPak Client
+pikpak_client = None
 
 # Jackett Configuration
 RAW_JACKETT_URL = os.getenv('JACKETT_URL') or os.getenv('VITE_JACKETT_URL')
@@ -32,8 +46,6 @@ if RAW_JACKETT_URL:
 
 JACKETT_API_KEY = os.getenv('JACKETT_API_KEY') or os.getenv('VITE_JACKETT_API_KEY')
 
-# Global PikPak Client
-pikpak_client = None
 
 # Rate Limiting Store (IP -> last_request_time)
 rate_limit_store = {}
@@ -215,6 +227,7 @@ def enrich_results(data):
     return data
 
 @app.route('/api/search', methods=['GET'])
+@cache.cached(timeout=300, query_string=True)
 def search_torrents():
     query = request.args.get('q')
     category = request.args.get('category', '')
@@ -263,15 +276,10 @@ def search_torrents():
                         results = data.get('Results', [])
                         print(f"✅ SUCCESS: Found {len(results)} results using {url}", file=sys.stderr, flush=True)
                         return jsonify(data)
-                    except Exception as je:
-                        print(f"❌ JSON Parse Error from {url}: {str(je)}", file=sys.stderr, flush=True)
-                        last_error = f"JSON Error: {str(je)}"
+                    except ValueError as e:
+                        print(f"❌ Jackett JSON decode error: {e}", file=sys.stderr)
+                        last_error = f"Invalid response from Indexer: {e}"
                         continue
-                
-                if response.status_code == 404:
-                    continue
-                
-                print(f"⚠️ {url} returned {response.status_code}: {response.text[:200]}", file=sys.stderr, flush=True)
                 last_error = f"Jackett error {response.status_code}"
             except Exception as e:
                 print(f"⚠️ {url} failed: {str(e)}", file=sys.stderr, flush=True)

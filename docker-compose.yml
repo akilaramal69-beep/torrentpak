@@ -10,6 +10,12 @@ services:
     restart: unless-stopped
     depends_on:
       - jackett
+      - redis
+
+  redis:
+    image: redis:alpine
+    container_name: torrentwave_redis
+    restart: unless-stopped
 
   jackett:
     image: lscr.io/linuxserver/jackett:latest
