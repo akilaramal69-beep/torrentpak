@@ -1,14 +1,14 @@
 import os
 import sys
 import re
-import time
 import urllib.parse
 import unicodedata
-from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from flask_caching import Cache
 
 load_dotenv()
@@ -17,40 +17,36 @@ app = Flask(__name__, static_folder='dist', static_url_path='')
 app.secret_key = os.getenv('SECRET_KEY', 'torrentwave_secret_key')
 CORS(app)
 
-# Configure Flask-Caching with Redis
+# Aggressive caching - 30 min for same searches
 cache_config = {
     "CACHE_TYPE": "RedisCache",
     "CACHE_REDIS_HOST": "redis",
     "CACHE_REDIS_PORT": 6379,
-    "CACHE_DEFAULT_TIMEOUT": 600  # Cache search results for 10 minutes
+    "CACHE_DEFAULT_TIMEOUT": 1800  # 30 minutes cache
 }
 cache = Cache(app, config=cache_config)
 
 # Jackett Configuration
-RAW_JACKETT_URL = os.getenv('JACKETT_URL') or os.getenv('VITE_JACKETT_URL')
-JACKETT_URL = RAW_JACKETT_URL
-if RAW_JACKETT_URL:
-    # Fix single slash typos like https:/domain.com
-    JACKETT_URL = re.sub(r'^(https?):/([^/])', r'\1://\2', RAW_JACKETT_URL)
-
+JACKETT_URL = os.getenv('JACKETT_URL', 'http://jackett:9117')
 JACKETT_API_KEY = os.getenv('JACKETT_API_KEY') or os.getenv('VITE_JACKETT_API_KEY')
 
-# HTTP Session for connection pooling (faster repeated requests)
+# SPEED: Optimized HTTP session with connection pooling and keep-alive
 http_session = requests.Session()
+adapter = HTTPAdapter(
+    pool_connections=10,
+    pool_maxsize=20,
+    max_retries=Retry(total=0)  # No retries - fail fast
+)
+http_session.mount('http://', adapter)
+http_session.mount('https://', adapter)
 http_session.headers.update({
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    'User-Agent': 'TorrentWave/1.0',
+    'Connection': 'keep-alive',
+    'Accept': 'application/json',
 })
 
-# Comprehensive list of stable public trackers
-PUBLIC_TRACKERS = [
-    'udp://tracker.opentrackr.org:1337/announce',
-    'udp://open.tracker.cl:1337/announce',
-    'udp://9.rarbg.com:2810/announce',
-    'udp://tracker.openbittorrent.com:80/announce',
-    'udp://opentracker.i2p.rocks:6969/announce',
-    'udp://tracker.internetwarriors.net:1337/announce',
-    'udp://tracker.leechers-paradise.org:6969/announce',
-]
+# Minimal trackers for speed
+TRACKERS = 'udp://tracker.opentrackr.org:1337&tr=udp://open.tracker.cl:1337&tr=udp://tracker.openbittorrent.com:80'
 
 @app.route('/')
 def serve_index():
@@ -60,204 +56,112 @@ def serve_index():
 def serve_static(path):
     return send_from_directory(app.static_folder, path)
 
-@app.route('/api/debug', methods=['GET'])
-def debug_config():
-    internal_test = "Not tested"
-    indexers_found = []
+@app.route('/api/search', methods=['GET'])
+@cache.cached(timeout=1800, query_string=True)  # 30 min cache
+def search():
+    q = request.args.get('q', '').strip()
+    cat = request.args.get('category', '')
+    
+    if not q:
+        return jsonify({'error': 'No query'}), 400
+    
+    if not JACKETT_API_KEY:
+        return jsonify({'error': 'Jackett not configured'}), 500
+    
+    # Quick normalize
+    q = unicodedata.normalize('NFKD', q).encode('ascii', 'ignore').decode('ascii')
+    q = re.sub(r'[._\-]+', ' ', q)
+    q = re.sub(r'\s+', ' ', q).strip()
     
     try:
-        resp = requests.get(
-            f"http://jackett:9117/api/v2.0/indexers/all/results?apikey={JACKETT_API_KEY or ''}&Query=test", 
-            headers={'User-Agent': 'Mozilla/5.0'},
-            timeout=5, verify=False
-        )
-        internal_test = f"Connected (Status: {resp.status_code})"
+        params = {'apikey': JACKETT_API_KEY, 'Query': q}
+        if cat and cat not in ('all', 'undefined', ''):
+            params['Category[]'] = cat
         
-        idx_resp = requests.get(
-            f"http://jackett:9117/api/v2.0/indexers?apikey={JACKETT_API_KEY or ''}",
-            headers={'User-Agent': 'Mozilla/5.0'},
-            timeout=5, verify=False
-        )
-        if idx_resp.status_code == 200:
-            try:
-                indexers = idx_resp.json()
-                indexers_found = [i.get('name') for i in indexers if i.get('configured')]
-            except:
-                internal_test += " (Indexers call returned non-JSON)"
+        # SPEED: 5 second timeout, direct internal URL
+        url = "http://jackett:9117/api/v2.0/indexers/all/results"
+        print(f"🔍 {q}", file=sys.stderr, flush=True)
+        
+        resp = http_session.get(url, params=params, timeout=5, verify=False)
+        
+        if resp.status_code != 200:
+            return jsonify({'error': f'Jackett error {resp.status_code}'}), 502
+        
+        data = resp.json()
+        results = data.get('Results', [])
+        
+        # SPEED: Simple in-place processing
+        query_words = set(w.lower() for w in q.split() if len(w) >= 2)
+        filtered = []
+        
+        for i, r in enumerate(results):
+            if not isinstance(r, dict):
+                continue
+            
+            # Basic enrichment
+            r['Id'] = r.get('Id', i + 1)
+            r['Indexer'] = r.get('Indexer') or r.get('Tracker', 'Unknown')
+            
+            # Magnet fix
+            magnet = r.get('MagnetUri') or r.get('Link', '')
+            if not str(magnet).startswith('magnet:'):
+                h = r.get('InfoHash')
+                if h:
+                    magnet = f"magnet:?xt=urn:btih:{h}&dn={urllib.parse.quote(r.get('Title', 'file'))}&tr={TRACKERS}"
+                else:
+                    magnet = None
+            r['MagnetUri'] = magnet
+            
+            # Relevance check (fast)
+            if query_words:
+                title = (r.get('Title') or '').lower()
+                matches = sum(1 for w in query_words if w in title)
+                if matches < max(1, len(query_words) // 2):
+                    continue
+            
+            # Category check (fast)
+            if cat and cat not in ('all', ''):
+                try:
+                    target = int(cat)
+                    prefix = str(target)[:2]
+                    cats = r.get('Category', [])
+                    if isinstance(cats, (int, str)):
+                        cats = [int(cats)]
+                    elif isinstance(cats, list):
+                        cats = [int(c) for c in cats if str(c).isdigit()]
+                    
+                    found = any(c == target or (str(target).endswith('00') and str(c).startswith(prefix)) for c in cats)
+                    if not found:
+                        continue
+                except:
+                    pass
+            
+            filtered.append(r)
+        
+        data['Results'] = filtered
+        print(f"✅ {len(filtered)} results", file=sys.stderr, flush=True)
+        return jsonify(data)
+        
+    except requests.Timeout:
+        print("⏱️ Timeout", file=sys.stderr)
+        return jsonify({'error': 'Search timeout - try fewer indexers'}), 504
     except Exception as e:
-        internal_test = f"Failed: {str(e)}"
+        print(f"❌ {e}", file=sys.stderr)
+        return jsonify({'error': str(e)}), 500
 
+@app.route('/api/debug', methods=['GET'])
+def debug():
+    try:
+        resp = requests.get(f"http://jackett:9117/api/v2.0/indexers?apikey={JACKETT_API_KEY}", timeout=3, verify=False)
+        indexers = [i.get('name') for i in resp.json() if i.get('configured')] if resp.ok else []
+    except:
+        indexers = []
+    
     return jsonify({
-        'jackett_url_env': JACKETT_URL,
-        'jackett_key_set': bool(JACKETT_API_KEY),
-        'internal_test': internal_test,
-        'configured_indexers': indexers_found,
-        'indexers_count': len(indexers_found),
-        'server_time': datetime.now().isoformat()
+        'jackett_configured': bool(JACKETT_API_KEY),
+        'indexers': indexers,
+        'indexer_count': len(indexers)
     })
 
-def enrich_results(data):
-    results = data.get('Results', [])
-    tracker_query = "&".join([f"tr={urllib.parse.quote(t)}" for t in PUBLIC_TRACKERS])
-    
-    for idx, res in enumerate(results):
-        if not isinstance(res, dict):
-            continue
-
-        if 'Id' not in res:
-             res['Id'] = idx + 1
-             
-        if 'Indexer' not in res:
-            res['Indexer'] = res.get('Tracker', 'Unknown')
-            
-        jackett_magnet = res.get('MagnetUri')
-        link = res.get('Link')
-        info_hash = res.get('InfoHash')
-        
-        final_magnet = None
-        
-        if jackett_magnet and str(jackett_magnet).startswith('magnet:'):
-            final_magnet = jackett_magnet
-        elif link and str(link).startswith('magnet:'):
-            final_magnet = link
-        elif info_hash:
-            name = urllib.parse.quote(res.get('Title', 'download'))
-            final_magnet = f"magnet:?xt=urn:btih:{info_hash}&dn={name}"
-            
-        if final_magnet:
-            if 'tr=' not in final_magnet:
-                sep = '&' if '?' in final_magnet else '?'
-                final_magnet = f"{final_magnet}{sep}{tracker_query}"
-            res['MagnetUri'] = final_magnet
-        else:
-            res['MagnetUri'] = None
-            
-    return data
-
-@app.route('/api/search', methods=['GET'])
-@cache.cached(timeout=300, query_string=True)
-def search_torrents():
-    query = request.args.get('q')
-    category = request.args.get('category', '')
-    if not query:
-        return jsonify({'error': 'No query provided'}), 400
-
-    # Advanced Query Normalization
-    query = unicodedata.normalize('NFKD', query).encode('ascii', 'ignore').decode('ascii')
-    query = re.sub(r'[._\-]+', ' ', query)
-    query = re.sub(r'[^\w\s:]', '', query)
-    query = re.sub(r'\s+', ' ', query).strip()
-    
-    try:
-        if not JACKETT_URL or not JACKETT_API_KEY:
-            print("❌ Search failed: Jackett key or URL missing", file=sys.stderr)
-            return jsonify({'error': 'Jackett not configured'}), 500
-
-        # Try internal Docker URL first (fastest), then configured URL
-        base_urls = ["http://jackett:9117"]
-        if JACKETT_URL and "jackett:9117" not in JACKETT_URL:
-            base_urls.append(JACKETT_URL.rstrip('/'))
-        
-        # Single path - the standard Jackett API
-        path = "/api/v2.0/indexers/all/results"
-        
-        last_error = None
-        for base in base_urls:
-            try:
-                url = f"{base}{path}"
-                params = {
-                    'apikey': JACKETT_API_KEY,
-                    'Query': query
-                }
-                
-                if category and category != 'all' and category != 'undefined' and category != '':
-                    params['Category[]'] = category
-                
-                print(f"🔍 Searching: {url} (query: {query})", file=sys.stderr, flush=True)
-                response = http_session.get(url, params=params, timeout=8, verify=False)
-                
-                if response.status_code == 200:
-                    try:
-                        data = response.json()
-                        data = enrich_results(data)
-                        results = data.get('Results', [])
-                        
-                        # Category Filtering
-                        if category and category != 'all':
-                            try:
-                                target_cat = int(category)
-                                filtered_results = []
-                                for r in results:
-                                    cat = r.get('Category', [])
-                                    if isinstance(cat, (int, str)):
-                                        cat_list = [int(cat)]
-                                    elif isinstance(cat, list):
-                                        cat_list = [int(c) for c in cat if str(c).isdigit()]
-                                    else:
-                                        continue
-
-                                    target_prefix = str(target_cat)[0:2]
-                                    match = False
-                                    for c in cat_list:
-                                        if c == target_cat:
-                                            match = True
-                                            break
-                                        if str(target_cat).endswith('00') and str(c).startswith(target_prefix):
-                                            match = True
-                                            break
-                                    
-                                    if match:
-                                        filtered_results.append(r)
-                                        
-                                results = filtered_results
-                            except Exception as filter_e:
-                                print(f"⚠️ Category filter error: {filter_e}", file=sys.stderr)
-                                pass
-
-                        # Relevance Filtering
-                        if query:
-                            try:
-                                query_words = [w.lower() for w in query.split() if len(w) >= 2]
-                                
-                                if query_words:
-                                    relevant_results = []
-                                    for r in results:
-                                        title = (r.get('Title', '') or '').lower()
-                                        title_normalized = re.sub(r'[._\-]+', ' ', title)
-                                        title_normalized = re.sub(r'[^\w\s]', '', title_normalized)
-                                        
-                                        matches = sum(1 for word in query_words if word in title_normalized)
-                                        required_matches = max(1, len(query_words) // 2)
-                                        
-                                        if matches >= required_matches:
-                                            relevant_results.append(r)
-                                    
-                                    results = relevant_results
-                                    print(f"🎯 Relevance: {len(relevant_results)} results", file=sys.stderr)
-                            except Exception as rel_e:
-                                print(f"⚠️ Relevance filter error: {rel_e}", file=sys.stderr)
-                                pass
-
-                        data['Results'] = results
-                        print(f"✅ Found {len(results)} results", file=sys.stderr, flush=True)
-                        return jsonify(data)
-                    except ValueError as e:
-                        print(f"❌ JSON error: {e}", file=sys.stderr)
-                        last_error = f"Invalid response: {e}"
-                        continue
-                
-                last_error = f"Jackett error {response.status_code}"
-            except Exception as e:
-                print(f"⚠️ {base} failed: {str(e)}", file=sys.stderr, flush=True)
-                last_error = str(e)
-        
-    except Exception as global_e:
-        print(f"🔥 CRITICAL SEARCH CRASH: {str(global_e)}", file=sys.stderr)
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': 'Internal Search Error. Please try again.'}), 502
-
-    return jsonify({'error': last_error or "Could not reach Jackett. Check indexers and API key."}), 502
-
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
