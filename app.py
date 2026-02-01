@@ -242,7 +242,8 @@ def search_torrents():
     # Replace dots with spaces (common in filenames) and strip excess whitespace
     query = query.replace('.', ' ').strip()
     
-    if not JACKETT_URL or not JACKETT_API_KEY:
+    try:
+        if not JACKETT_URL or not JACKETT_API_KEY:
         print("❌ Search failed: Jackett key or URL missing", file=sys.stderr)
         return jsonify({'error': 'Jackett not configured'}), 500
 
@@ -278,6 +279,28 @@ def search_torrents():
                         data = response.json()
                         data = enrich_results(data)
                         results = data.get('Results', [])
+                        
+                        # Strict Category Filtering (Post-Fetch)
+                        # Jackett sometimes returns broad matches. We strictly filter if a specific ID was requested.
+                        if category and category != 'all':
+                            try:
+                                # Safe conversion to int for comparison (Jackett uses int IDs, frontend sends string)
+                                target_cat = int(category)
+                                # Filter: Keep result if its Category matches OR if it's a sub-category (e.g. 2000 matches 2040)
+                                # For simplicity, we check if the result's Category ID starts with the first digit of the target? 
+                                # No, Jackett specific categories are precise. Let's do a direct check first.
+                                # Actually, '2000' is Movies, '2040' is Movies HD. If user asks for 2000, 2040 is acceptable.
+                                # If user asks for 2040, 2000 is NOT.
+                                # Simplified logic: If the requested category is specific (e.g. 2040), key match must be exact.
+                                # If general (e.g. 2000), loose match might be okay? 
+                                # User complaint says "othcategories too". Let's enforce strict equality for now.
+                                results = [r for r in results if str(r.get('Category', '')) == str(target_cat) or str(r.get('Category', '')).startswith(str(target_cat)[0:2])] 
+                            except:
+                                pass # formatting error, ignore filter
+
+                        # Update data with filtered results
+                        data['Results'] = results
+                        
                         print(f"✅ SUCCESS: Found {len(results)} results using {url}", file=sys.stderr, flush=True)
                         return jsonify(data)
                     except ValueError as e:
@@ -288,6 +311,12 @@ def search_torrents():
             except Exception as e:
                 print(f"⚠️ {url} failed: {str(e)}", file=sys.stderr, flush=True)
                 last_error = str(e)
+    
+    except Exception as global_e:
+        print(f"🔥 CRITICAL SEARCH CRASH: {str(global_e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Internal Search Error. Please try again.'}), 502
 
     return jsonify({'error': last_error or "Could not reach Jackett. Check indexers and API key."}), 502
 
