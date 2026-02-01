@@ -244,74 +244,71 @@ def search_torrents():
     
     try:
         if not JACKETT_URL or not JACKETT_API_KEY:
-        print("❌ Search failed: Jackett key or URL missing", file=sys.stderr)
-        return jsonify({'error': 'Jackett not configured'}), 500
+            print("❌ Search failed: Jackett key or URL missing", file=sys.stderr)
+            return jsonify({'error': 'Jackett not configured'}), 500
 
-    # Smart fallback: Try the configured URL first, then the internal Docker URL
-    base_urls = []
-    if JACKETT_URL:
-        base_urls.append(JACKETT_URL.rstrip('/'))
-    base_urls.append("http://jackett:9117")
-    
-    paths = ["/api/v2.0/indexers/all/results", "/jackett/api/v2.0/indexers/all/results"]
-    
-    last_error = None
-    for base in base_urls:
-        for path in paths:
-            try:
-                url = f"{base}{path}"
-                params = {
-                    'apikey': JACKETT_API_KEY,
-                    'Query': query
-                }
-                
-                # Support both Category and Category[] just in case
-                if category and category != 'all' and category != 'undefined' and category != '':
-                    params['Category[]'] = category
+        # Smart fallback: Try the configured URL first, then the internal Docker URL
+        base_urls = []
+        if JACKETT_URL:
+            base_urls.append(JACKETT_URL.rstrip('/'))
+        base_urls.append("http://jackett:9117")
+        
+        paths = ["/api/v2.0/indexers/all/results", "/jackett/api/v2.0/indexers/all/results"]
+        
+        last_error = None
+        for base in base_urls:
+            for path in paths:
+                try:
+                    url = f"{base}{path}"
+                    params = {
+                        'apikey': JACKETT_API_KEY,
+                        'Query': query
+                    }
                     
-                print(f"🔍 Trying Jackett: {url} (query: {query}, cat: {category})", file=sys.stderr, flush=True)
-                # verify=False helps with self-signed certs inside docker networks
-                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
-                response = requests.get(url, params=params, headers=headers, timeout=25, verify=False)
-                
-                if response.status_code == 200:
-                    try:
-                        data = response.json()
-                        data = enrich_results(data)
-                        results = data.get('Results', [])
+                    # Support both Category and Category[] just in case
+                    if category and category != 'all' and category != 'undefined' and category != '':
+                        params['Category[]'] = category
                         
-                        # Strict Category Filtering (Post-Fetch)
-                        # Jackett sometimes returns broad matches. We strictly filter if a specific ID was requested.
-                        if category and category != 'all':
-                            try:
-                                # Safe conversion to int for comparison (Jackett uses int IDs, frontend sends string)
-                                target_cat = int(category)
-                                # Filter: Keep result if its Category matches OR if it's a sub-category (e.g. 2000 matches 2040)
-                                # For simplicity, we check if the result's Category ID starts with the first digit of the target? 
-                                # No, Jackett specific categories are precise. Let's do a direct check first.
-                                # Actually, '2000' is Movies, '2040' is Movies HD. If user asks for 2000, 2040 is acceptable.
-                                # If user asks for 2040, 2000 is NOT.
-                                # Simplified logic: If the requested category is specific (e.g. 2040), key match must be exact.
-                                # If general (e.g. 2000), loose match might be okay? 
-                                # User complaint says "othcategories too". Let's enforce strict equality for now.
-                                results = [r for r in results if str(r.get('Category', '')) == str(target_cat) or str(r.get('Category', '')).startswith(str(target_cat)[0:2])] 
-                            except:
-                                pass # formatting error, ignore filter
+                    print(f"🔍 Trying Jackett: {url} (query: {query}, cat: {category})", file=sys.stderr, flush=True)
+                    # verify=False helps with self-signed certs inside docker networks
+                    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+                    response = requests.get(url, params=params, headers=headers, timeout=25, verify=False)
+                    
+                    if response.status_code == 200:
+                        try:
+                            data = response.json()
+                            data = enrich_results(data)
+                            results = data.get('Results', [])
+                            
+                            # Strict Category Filtering (Post-Fetch)
+                            # Jackett sometimes returns broad matches. We strictly filter if a specific ID was requested.
+                            if category and category != 'all':
+                                try:
+                                    # Safe conversion to int for comparison (Jackett uses int IDs, frontend sends string)
+                                    target_cat = int(category)
+                                    # Simple logic: If the requested category is specific (e.g. 2040), key match must be exact or at least a sub-match
+                                    # User complaint says "othcategories too". Let's enforce stricter equality.
+                                    # We allow exact match OR if the result category starts with the target category string (e.g. 2000 matches 2000, but maybe we shouldn't allow subtypes for now?)
+                                    # Let's start with strict equality + prefix match for the first 2 digits to allow subcats logic if reasonable
+                                    results = [r for r in results if str(r.get('Category', '')) == str(target_cat) or str(r.get('Category', '')).startswith(str(target_cat)[0:2])] 
+                                except:
+                                    pass # formatting error, ignore filter
 
-                        # Update data with filtered results
-                        data['Results'] = results
-                        
-                        print(f"✅ SUCCESS: Found {len(results)} results using {url}", file=sys.stderr, flush=True)
-                        return jsonify(data)
-                    except ValueError as e:
-                        print(f"❌ Jackett JSON decode error: {e}", file=sys.stderr)
-                        last_error = f"Invalid response from Indexer: {e}"
-                        continue
-                last_error = f"Jackett error {response.status_code}"
-            except Exception as e:
-                print(f"⚠️ {url} failed: {str(e)}", file=sys.stderr, flush=True)
-                last_error = str(e)
-    
+                            # Update data with filtered results
+                            data['Results'] = results
+                            
+                            print(f"✅ SUCCESS: Found {len(results)} results using {url}", file=sys.stderr, flush=True)
+                            return jsonify(data)
+                        except ValueError as e:
+                            print(f"❌ Jackett JSON decode error: {e}", file=sys.stderr)
+                            last_error = f"Invalid response from Indexer: {e}"
+                            continue
+                    
+                    last_error = f"Jackett error {response.status_code}"
+                except Exception as e:
+                    print(f"⚠️ {url} failed: {str(e)}", file=sys.stderr, flush=True)
+                    last_error = str(e)
+        
     except Exception as global_e:
         print(f"🔥 CRITICAL SEARCH CRASH: {str(global_e)}", file=sys.stderr)
         import traceback
