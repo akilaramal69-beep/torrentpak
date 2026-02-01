@@ -30,19 +30,88 @@ function App() {
             const response = await fetch('/api/search?q=test'); // Just to get a response or handle categories differently
             // In a real app, Jackett has a capabilities endpoint. For now, we'll use a static list or fetch from API if available.
             setCategories([
-                { id: '2000', name: 'Movies' },
-                { id: '2040', name: 'Movies (HD)' },
-                { id: '2045', name: 'Movies (UHD/4K)' },
-                { id: '5000', name: 'TV Shows' },
-                { id: '5070', name: 'TV (HD)' },
-                { id: '5045', name: 'TV (UHD/4K)' },
-                { id: '3000', name: 'Music' },
-                { id: '4000', name: 'PC Games' },
-                { id: '1000', name: 'Console Games' },
-                { id: '6000', name: 'Software' },
-                { id: '7000', name: 'Books' },
-                { id: '3030', name: 'Audiobooks' },
-                { id: '8000', name: 'Other' }
+                // Movies
+                { id: '2000', name: '🎬 Movies (All)' },
+                { id: '2010', name: '  Movies - Foreign' },
+                { id: '2020', name: '  Movies - Other' },
+                { id: '2030', name: '  Movies - SD' },
+                { id: '2040', name: '  Movies - HD' },
+                { id: '2045', name: '  Movies - UHD/4K' },
+                { id: '2050', name: '  Movies - BluRay' },
+                { id: '2060', name: '  Movies - 3D' },
+                { id: '2070', name: '  Movies - DVD' },
+                { id: '2080', name: '  Movies - WEB-DL' },
+
+                // TV Shows
+                { id: '5000', name: '📺 TV Shows (All)' },
+                { id: '5010', name: '  TV - WEB-DL' },
+                { id: '5020', name: '  TV - Foreign' },
+                { id: '5030', name: '  TV - SD' },
+                { id: '5040', name: '  TV - HD' },
+                { id: '5045', name: '  TV - UHD/4K' },
+                { id: '5050', name: '  TV - Other' },
+                { id: '5060', name: '  TV - Sport' },
+                { id: '5070', name: '  TV - Anime' },
+                { id: '5080', name: '  TV - Documentary' },
+
+                // Anime (dedicated)
+                { id: '5070', name: '🎌 Anime (All)' },
+
+                // Audio/Music
+                { id: '3000', name: '🎵 Music (All)' },
+                { id: '3010', name: '  Music - MP3' },
+                { id: '3020', name: '  Music - Video' },
+                { id: '3030', name: '  Music - Audiobook' },
+                { id: '3040', name: '  Music - Lossless' },
+                { id: '3050', name: '  Music - Podcast' },
+                { id: '3060', name: '  Music - Foreign' },
+
+                // PC Games
+                { id: '4000', name: '🎮 PC Games (All)' },
+                { id: '4010', name: '  PC - 0day' },
+                { id: '4020', name: '  PC - ISO' },
+                { id: '4030', name: '  PC - Mac' },
+                { id: '4050', name: '  PC - Phone/Mobile' },
+
+                // Console Games
+                { id: '1000', name: '🕹️ Console Games (All)' },
+                { id: '1010', name: '  Console - NDS' },
+                { id: '1020', name: '  Console - PSP' },
+                { id: '1030', name: '  Console - Wii' },
+                { id: '1040', name: '  Console - Xbox' },
+                { id: '1050', name: '  Console - Xbox 360' },
+                { id: '1060', name: '  Console - WiiWare/VC' },
+                { id: '1070', name: '  Console - Xbox One' },
+                { id: '1080', name: '  Console - PS4' },
+                { id: '1090', name: '  Console - PS3' },
+                { id: '1110', name: '  Console - Switch' },
+                { id: '1120', name: '  Console - PS5' },
+                { id: '1130', name: '  Console - Xbox Series X' },
+
+                // Software
+                { id: '6000', name: '💿 Software (All)' },
+                { id: '6010', name: '  Software - 0day' },
+                { id: '6020', name: '  Software - ISO' },
+                { id: '6030', name: '  Software - Mac' },
+                { id: '6040', name: '  Software - Mobile' },
+                { id: '6050', name: '  Software - Other' },
+
+                // Books
+                { id: '7000', name: '📚 Books (All)' },
+                { id: '7010', name: '  Books - Mags' },
+                { id: '7020', name: '  Books - EBook' },
+                { id: '7030', name: '  Books - Comics' },
+                { id: '7040', name: '  Books - Technical' },
+                { id: '7050', name: '  Books - Other' },
+                { id: '7060', name: '  Books - Foreign' },
+
+                // Other
+                { id: '8000', name: '📦 Other' },
+                { id: '8010', name: '  Other - Misc' },
+                { id: '8020', name: '  Other - Hashed' },
+
+                // XXX (Adult)
+                { id: '6000', name: '🔞 XXX (Adult)' },
             ]);
         } catch (e) {
             console.error("Failed to fetch categories");
