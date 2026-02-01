@@ -344,6 +344,37 @@ def search_torrents():
                                     print(f"⚠️ Category filter error: {filter_e}", file=sys.stderr)
                                     pass # Ignore filter on error to avoid empty results due to bug
 
+                            # Relevance Filtering (Post-Fetch)
+                            # Only keep results where the title contains the search words
+                            if query:
+                                try:
+                                    # Split query into individual words (already normalized)
+                                    query_words = [w.lower() for w in query.split() if len(w) >= 2]
+                                    
+                                    if query_words:
+                                        relevant_results = []
+                                        for r in results:
+                                            title = (r.get('Title', '') or '').lower()
+                                            # Normalize title the same way we normalized query
+                                            title_normalized = re.sub(r'[._\-]+', ' ', title)
+                                            title_normalized = re.sub(r'[^\w\s]', '', title_normalized)
+                                            
+                                            # Count how many query words appear in title
+                                            matches = sum(1 for word in query_words if word in title_normalized)
+                                            
+                                            # Require at least 50% of words to match (flexible but relevant)
+                                            # For single-word queries, require exact match
+                                            required_matches = max(1, len(query_words) // 2)
+                                            
+                                            if matches >= required_matches:
+                                                relevant_results.append(r)
+                                        
+                                        results = relevant_results
+                                        print(f"🎯 Relevance filter: {len(relevant_results)} results match query words", file=sys.stderr)
+                                except Exception as rel_e:
+                                    print(f"⚠️ Relevance filter error: {rel_e}", file=sys.stderr)
+                                    pass  # Don't break on filter error
+
                             # Update data with filtered results
                             data['Results'] = results
                             
