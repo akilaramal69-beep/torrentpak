@@ -134,6 +134,78 @@ def serve_index():
 def serve_static(path):
     return send_from_directory(app.static_folder, path)
 
+@app.route('/api/categories', methods=['GET'])
+@cache.cached(timeout=3600)  # Cache for 1 hour
+def get_categories():
+    """Fetch categories from Jackett's indexer capabilities"""
+    if not JACKETT_URL or not JACKETT_API_KEY:
+        return jsonify({'error': 'Jackett not configured'}), 500
+    
+    try:
+        # Try to get indexer capabilities from Jackett
+        base_urls = []
+        if JACKETT_URL:
+            base_urls.append(JACKETT_URL.rstrip('/'))
+        base_urls.append("http://jackett:9117")
+        
+        all_categories = {}
+        
+        for base in base_urls:
+            try:
+                # Get all configured indexers
+                indexers_url = f"{base}/api/v2.0/indexers/all/results/torznab"
+                caps_url = f"{base}/api/v2.0/indexers/all/results/torznab?t=caps&apikey={JACKETT_API_KEY}"
+                
+                response = http_session.get(caps_url, timeout=10, verify=False)
+                
+                if response.status_code == 200:
+                    # Parse XML response for categories
+                    import xml.etree.ElementTree as ET
+                    root = ET.fromstring(response.content)
+                    
+                    # Find all category elements
+                    for cat in root.findall('.//category'):
+                        cat_id = cat.get('id')
+                        cat_name = cat.get('name')
+                        if cat_id and cat_name:
+                            all_categories[cat_id] = cat_name
+                            
+                    # Also get subcategories
+                    for subcat in root.findall('.//subcat'):
+                        subcat_id = subcat.get('id')
+                        subcat_name = subcat.get('name')
+                        if subcat_id and subcat_name:
+                            all_categories[subcat_id] = f"  {subcat_name}"
+                    
+                    if all_categories:
+                        break
+                        
+            except Exception as e:
+                print(f"⚠️ Failed to fetch categories from {base}: {e}", file=sys.stderr)
+                continue
+        
+        # Convert to list format frontend expects
+        categories = [{'id': k, 'name': v} for k, v in sorted(all_categories.items(), key=lambda x: (x[0][:1], x[1]))]
+        
+        # If no categories found, return static fallback
+        if not categories:
+            categories = [
+                {'id': '2000', 'name': '🎬 Movies'},
+                {'id': '5000', 'name': '📺 TV Shows'},
+                {'id': '3000', 'name': '🎵 Music'},
+                {'id': '4000', 'name': '🎮 PC Games'},
+                {'id': '1000', 'name': '🕹️ Console'},
+                {'id': '6000', 'name': '💿 Software'},
+                {'id': '7000', 'name': '📚 Books'},
+                {'id': '8000', 'name': '📦 Other'},
+            ]
+        
+        return jsonify({'categories': categories})
+        
+    except Exception as e:
+        print(f"❌ Categories fetch error: {e}", file=sys.stderr)
+        return jsonify({'error': str(e)}), 500
+
 import sys
 
 @app.route('/api/debug', methods=['GET'])
