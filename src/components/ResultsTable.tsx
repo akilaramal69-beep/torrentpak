@@ -136,6 +136,9 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
     } else {
       fallbackCopy(magnetUri);
     }
+
+    // Auto-reset the "Copied!" state after 1.5 seconds
+    setTimeout(() => setActiveCopyMagnetId(null), 1500);
   };
 
   const SortableHeaderCell: React.FC<{
@@ -294,30 +297,18 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
                   <div className="flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
                     {/* Copy Magnet Button */}
                     <div className="relative">
-                      {activeCopyMagnetId === result.Id ? (
-                        <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center bg-slate-900 border border-slate-600 rounded-lg shadow-lg z-10 p-1 animate-in fade-in zoom-in duration-200">
-                          <input
-                            type="text"
-                            readOnly
-                            value={result.MagnetUri || ''}
-                            className="w-48 text-xs bg-transparent border-none text-slate-300 px-2 focus:ring-0"
-                            autoFocus
-                            onBlur={() => setActiveCopyMagnetId(null)}
-                          />
-                          <button onClick={() => setActiveCopyMagnetId(null)} className="p-1 text-slate-400 hover:text-white rounded-md">
-                            <CloseIcon />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => handleCopyMagnet(result.MagnetUri, result.Id)}
-                          disabled={!result.MagnetUri}
-                          title="Copy Magnet Link"
-                          className="p-2 text-slate-400 hover:text-sky-400 hover:bg-sky-400/10 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
-                        >
+                      <button
+                        onClick={() => handleCopyMagnet(result.MagnetUri, result.Id)}
+                        disabled={!result.MagnetUri}
+                        title={activeCopyMagnetId === result.Id ? 'Copied!' : 'Copy Magnet Link'}
+                        className={`p-2 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed ${activeCopyMagnetId === result.Id ? 'text-green-400 bg-green-400/10' : 'text-slate-400 hover:text-sky-400 hover:bg-sky-400/10'}`}
+                      >
+                        {activeCopyMagnetId === result.Id ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        ) : (
                           <ClipboardCopyIcon />
-                        </button>
-                      )}
+                        )}
+                      </button>
                     </div>
 
                     <a
@@ -369,9 +360,13 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
               <button
                 onClick={() => handleCopyMagnet(result.MagnetUri, result.Id)}
                 disabled={!result.MagnetUri}
-                className="flex-1 bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-sky-900/20 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`flex-1 py-2.5 rounded-lg text-sm font-semibold shadow-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${activeCopyMagnetId === result.Id ? 'bg-green-600 hover:bg-green-500 text-white shadow-green-900/20' : 'bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white shadow-sky-900/20'}`}
               >
-                <ClipboardCopyIcon />
+                {activeCopyMagnetId === result.Id ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                ) : (
+                  <ClipboardCopyIcon />
+                )}
                 {activeCopyMagnetId === result.Id ? 'Copied!' : 'Copy Magnet'}
               </button>
               <a
