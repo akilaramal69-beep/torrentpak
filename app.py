@@ -188,6 +188,10 @@ def enrich_results(data):
     tracker_query = "&".join([f"tr={urllib.parse.quote(t)}" for t in PUBLIC_TRACKERS])
     
     for idx, res in enumerate(results):
+        # Safety check: Ensure item is a dict
+        if not isinstance(res, dict):
+            continue
+
         # Generate an ID if missing (crucial for frontend keys/filtering)
         if 'Id' not in res:
              res['Id'] = idx + 1

@@ -32,12 +32,17 @@ function App() {
             setCategories([
                 { id: '2000', name: 'Movies' },
                 { id: '2040', name: 'Movies (HD)' },
+                { id: '2045', name: 'Movies (UHD/4K)' },
                 { id: '5000', name: 'TV Shows' },
                 { id: '5070', name: 'TV (HD)' },
+                { id: '5045', name: 'TV (UHD/4K)' },
                 { id: '3000', name: 'Music' },
                 { id: '4000', name: 'PC Games' },
+                { id: '1000', name: 'Console Games' },
                 { id: '6000', name: 'Software' },
-                { id: '7000', name: 'Books' }
+                { id: '7000', name: 'Books' },
+                { id: '3030', name: 'Audiobooks' },
+                { id: '8000', name: 'Other' }
             ]);
         } catch (e) {
             console.error("Failed to fetch categories");
