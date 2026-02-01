@@ -66,6 +66,8 @@ services:
     environment:
       - POSTGRES_HOST=bitmagnet_postgres
       - POSTGRES_PASSWORD=bitmagnet_secret
+      # IMPORTANT: Keep save_pieces false to prevent database bloat
+      - DHT_CRAWLER_SAVE_PIECES=false
     depends_on:
       bitmagnet_postgres:
         condition: service_healthy
@@ -76,6 +78,12 @@ services:
       - --keys=queue_server
       - --keys=dht_crawler
     restart: unless-stopped
+    # Limit logs to prevent disk bloat
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   bitmagnet_postgres:
     image: postgres:16-alpine
@@ -91,6 +99,21 @@ services:
       interval: 10s
       start_period: 20s
     restart: unless-stopped
+    # Limit logs to prevent disk bloat
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    # PostgreSQL WAL optimization for smaller disk footprint
+    command:
+      - postgres
+      - -c
+      - max_wal_size=1GB
+      - -c
+      - min_wal_size=80MB
+      - -c
+      - wal_compression=on
 
 volumes:
   caddy_data:
