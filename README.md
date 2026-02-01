@@ -70,3 +70,27 @@ Visit `http://localhost:5000`.
 *   **Jackett** is proxied to `/jackett`.
 *   To protect your dashboard, consider adding `Basic Auth` in the `Caddyfile`.
 
+---
+
+## 🧲 Bitmagnet (Optional)
+
+TorrentWave includes **Bitmagnet** - a self-hosted DHT crawler that builds a local torrent index directly from the BitTorrent network.
+
+### What it does:
+- Crawls the DHT network 24/7
+- Builds a private, local torrent database
+- No external trackers needed!
+
+### Access:
+| Service | URL |
+|---------|-----|
+| **Web UI** | `http://your-server:3333` |
+| **Torznab API** | `http://bitmagnet:3333/torznab` |
+
+### Add to Jackett:
+1. Go to Jackett → **Add Indexer** → **Torznab (Generic)**
+2. URL: `http://bitmagnet:3333/torznab`
+3. API Key: leave empty
+
+> **Note**: Give Bitmagnet 1-2 hours to crawl and build an initial index. The longer it runs, the bigger your private index becomes!
+
