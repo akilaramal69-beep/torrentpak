@@ -279,7 +279,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
                 </td>
                 <td className="px-6 py-4 max-w-md">
                   <div className="flex flex-col gap-1">
-                    <span className="font-medium text-slate-200 line-clamp-2 leading-snug group-hover:text-sky-300 transition-colors" title={result.Title}>{result.Title}</span>
+                    <span className="font-medium text-slate-200 leading-snug group-hover:text-sky-300 transition-colors" title={result.Title}>{result.Title}</span>
                     <span className="text-xs text-slate-500">{result.Indexer}</span>
                   </div>
                 </td>
