@@ -172,134 +172,61 @@ def enrich_results(data):
 @app.route('/api/search', methods=['GET'])
 @cache.cached(timeout=300, query_string=True)
 def search_torrents():
-    query = request.args.get('q')
+    query = request.args.get('q', '').strip()
     category = request.args.get('category', '')
+    
     if not query:
         return jsonify({'error': 'No query provided'}), 400
 
-    # Advanced Query Normalization for better Jackett matching
-    # Step 1: Normalize unicode characters (convert accented chars like é to e)
-    query = unicodedata.normalize('NFKD', query).encode('ascii', 'ignore').decode('ascii')
-    
-    # Step 2: Replace common filename separators with spaces
-    query = re.sub(r'[._\-]+', ' ', query)
-    
-    # Step 3: Remove most special characters but keep alphanumeric, spaces, and colons (:)
-    query = re.sub(r'[^\w\s:]', '', query)
-    
-    # Step 4: Collapse multiple spaces into one and strip
-    query = re.sub(r'\s+', ' ', query).strip()
-    
-    try:
-        if not JACKETT_API_KEY:
-            print("❌ Search failed: Jackett API key missing", file=sys.stderr)
-            return jsonify({'error': 'Jackett not configured'}), 500
+    if not JACKETT_API_KEY:
+        return jsonify({'error': 'Jackett not configured'}), 500
 
-        # SPEED: Try internal Docker URL first (fastest), then configured URL
-        base_urls = ["http://jackett:9117"]
-        if JACKETT_URL and "jackett:9117" not in JACKETT_URL:
-            base_urls.append(JACKETT_URL.rstrip('/'))
-        
-        # Single path - standard Jackett API
-        path = "/api/v2.0/indexers/all/results"
-        
-        last_error = None
-        for base in base_urls:
-            try:
-                url = f"{base}{path}"
-                params = {
-                    'apikey': JACKETT_API_KEY,
-                    'Query': query
-                }
+    # Simple query cleanup (keep it minimal to not break searches)
+    clean_query = re.sub(r'[._\-]+', ' ', query)
+    clean_query = re.sub(r'\s+', ' ', clean_query).strip()
+
+    # Build request params
+    params = {
+        'apikey': JACKETT_API_KEY,
+        'Query': clean_query
+    }
+    
+    if category and category not in ['all', 'undefined', '']:
+        params['Category[]'] = category
+
+    # Try internal Docker URL first (fast), then external if configured
+    urls_to_try = ["http://jackett:9117/api/v2.0/indexers/all/results"]
+    if JACKETT_URL and "jackett:9117" not in JACKETT_URL:
+        urls_to_try.append(f"{JACKETT_URL.rstrip('/')}/api/v2.0/indexers/all/results")
+
+    last_error = None
+    for url in urls_to_try:
+        try:
+            print(f"🔍 Searching: {url} (query: {clean_query})", file=sys.stderr, flush=True)
+            response = http_session.get(url, params=params, timeout=15, verify=False)
+            
+            if response.status_code == 200:
+                data = response.json()
+                data = enrich_results(data)
+                results = data.get('Results', [])
                 
-                if category and category != 'all' and category != 'undefined' and category != '':
-                    params['Category[]'] = category
-                    
-                print(f"🔍 Searching: {url}", file=sys.stderr, flush=True)
-                response = http_session.get(url, params=params, timeout=45, verify=False)
+                print(f"✅ Found {len(results)} results", file=sys.stderr, flush=True)
+                return jsonify(data)
+            else:
+                last_error = f"Jackett returned {response.status_code}"
+                print(f"⚠️ {last_error}", file=sys.stderr)
                 
-                if response.status_code == 200:
-                    try:
-                        data = response.json()
-                        data = enrich_results(data)
-                        results = data.get('Results', [])
-                        
-                        # Category Filtering
-                        if category and category != 'all':
-                            try:
-                                target_cat = int(category)
-                                filtered_results = []
-                                for r in results:
-                                    cat = r.get('Category', [])
-                                    if isinstance(cat, (int, str)):
-                                        cat_list = [int(cat)]
-                                    elif isinstance(cat, list):
-                                        cat_list = [int(c) for c in cat if str(c).isdigit()]
-                                    else:
-                                        continue
+        except requests.exceptions.Timeout:
+            last_error = "Search timed out (15s)"
+            print(f"⏱️ Timeout on {url}", file=sys.stderr)
+        except requests.exceptions.ConnectionError as e:
+            last_error = f"Connection failed: {str(e)[:50]}"
+            print(f"❌ Connection error: {e}", file=sys.stderr)
+        except Exception as e:
+            last_error = str(e)[:100]
+            print(f"❌ Error: {e}", file=sys.stderr)
 
-                                    target_prefix = str(target_cat)[0:2]
-                                    match = False
-                                    for c in cat_list:
-                                        if c == target_cat:
-                                            match = True
-                                            break
-                                        if str(target_cat).endswith('00') and str(c).startswith(target_prefix):
-                                            match = True
-                                            break
-                                    
-                                    if match:
-                                        filtered_results.append(r)
-                                        
-                                results = filtered_results
-                            except Exception as filter_e:
-                                print(f"⚠️ Category filter error: {filter_e}", file=sys.stderr)
-                                pass
-
-                        # Relevance Filtering
-                        if query:
-                            try:
-                                query_words = [w.lower() for w in query.split() if len(w) >= 2]
-                                
-                                if query_words:
-                                    relevant_results = []
-                                    for r in results:
-                                        title = (r.get('Title', '') or '').lower()
-                                        title_normalized = re.sub(r'[._\-]+', ' ', title)
-                                        title_normalized = re.sub(r'[^\w\s]', '', title_normalized)
-                                        
-                                        matches = sum(1 for word in query_words if word in title_normalized)
-                                        required_matches = max(1, len(query_words) // 2)
-                                        
-                                        if matches >= required_matches:
-                                            relevant_results.append(r)
-                                    
-                                    results = relevant_results
-                                    print(f"🎯 {len(relevant_results)} relevant results", file=sys.stderr)
-                            except Exception as rel_e:
-                                print(f"⚠️ Relevance filter error: {rel_e}", file=sys.stderr)
-                                pass
-
-                        data['Results'] = results
-                        print(f"✅ Found {len(results)} results", file=sys.stderr, flush=True)
-                        return jsonify(data)
-                    except ValueError as e:
-                        print(f"❌ JSON error: {e}", file=sys.stderr)
-                        last_error = f"Invalid response: {e}"
-                        continue
-                
-                last_error = f"Jackett error {response.status_code}"
-            except Exception as e:
-                print(f"⚠️ {base} failed: {str(e)}", file=sys.stderr, flush=True)
-                last_error = str(e)
-        
-    except Exception as global_e:
-        print(f"🔥 CRITICAL SEARCH CRASH: {str(global_e)}", file=sys.stderr)
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': 'Internal Search Error. Please try again.'}), 502
-
-    return jsonify({'error': last_error or "Could not reach Jackett. Check indexers and API key."}), 502
+    return jsonify({'error': last_error or 'Search failed'}), 502
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
