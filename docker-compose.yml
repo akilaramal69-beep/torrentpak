@@ -9,11 +9,32 @@ services:
     depends_on:
       - jackett
       - redis
+    # Memory limit for 8GB VPS
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   redis:
     image: redis:alpine
     container_name: torrentwave_redis
     restart: unless-stopped
+    # Optimized Redis for caching with memory limit
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "2"
 
   jackett:
     image: lscr.io/linuxserver/jackett:latest
@@ -28,6 +49,15 @@ services:
       - ./jackett_config:/config
       - ./downloads:/downloads
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   flaresolverr:
     image: flaresolverr/flaresolverr:latest
@@ -38,6 +68,15 @@ services:
     ports:
       - "8191:8191"
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "30m"
+        max-file: "2"
 
   caddy:
     image: caddy:latest
@@ -54,6 +93,15 @@ services:
       - caddy_config:/config
     depends_on:
       - app
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "2"
 
   # Bitmagnet - Self-hosted DHT torrent indexer
   bitmagnet:
@@ -66,7 +114,6 @@ services:
     environment:
       - POSTGRES_HOST=bitmagnet_postgres
       - POSTGRES_PASSWORD=bitmagnet_secret
-      # IMPORTANT: Keep save_pieces false to prevent database bloat
       - DHT_CRAWLER_SAVE_PIECES=false
     depends_on:
       bitmagnet_postgres:
@@ -78,7 +125,10 @@ services:
       - --keys=queue_server
       - --keys=dht_crawler
     restart: unless-stopped
-    # Limit logs to prevent disk bloat
+    deploy:
+      resources:
+        limits:
+          memory: 1G
     logging:
       driver: "json-file"
       options:
@@ -99,13 +149,11 @@ services:
       interval: 10s
       start_period: 20s
     restart: unless-stopped
-    # Limit logs to prevent disk bloat
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "3"
-    # PostgreSQL WAL optimization for smaller disk footprint
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    # PostgreSQL optimized for 8GB VPS
     command:
       - postgres
       - -c
@@ -114,6 +162,19 @@ services:
       - min_wal_size=80MB
       - -c
       - wal_compression=on
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=128MB
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
 volumes:
   caddy_data:
