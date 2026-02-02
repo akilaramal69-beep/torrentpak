@@ -36,29 +36,8 @@ if RAW_JACKETT_URL:
 
 JACKETT_API_KEY = os.getenv('JACKETT_API_KEY') or os.getenv('VITE_JACKETT_API_KEY')
 
-# HTTP Session with keep-alive and retry for cold start resilience
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-
+# Simple HTTP Session with keep-alive
 http_session = requests.Session()
-
-# Retry strategy for transient failures (connection reset, timeout on first try)
-retry_strategy = Retry(
-    total=2,  # Retry up to 2 times
-    backoff_factor=0.5,  # Wait 0.5s, then 1s between retries
-    status_forcelist=[502, 503, 504],  # Retry on these HTTP errors
-    allowed_methods=["GET"]  # Only retry GET requests
-)
-
-# Connection pool with keep-alive
-adapter = HTTPAdapter(
-    max_retries=retry_strategy,
-    pool_connections=10,  # Keep 10 connections ready
-    pool_maxsize=20,  # Max 20 connections per host
-)
-
-http_session.mount("http://", adapter)
-http_session.mount("https://", adapter)
 http_session.headers.update({
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
     'Connection': 'keep-alive',
