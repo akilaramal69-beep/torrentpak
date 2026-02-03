@@ -280,7 +280,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
                 <td className="px-6 py-4 max-w-md">
                   <div className="flex flex-col gap-1">
                     <span className="font-medium text-slate-200 leading-snug group-hover:text-sky-300 transition-colors" title={result.Title}>{result.Title}</span>
-                    <span className="text-xs text-slate-500">{result.Indexer}</span>
+                    <span className="text-xs text-slate-500">{result.Indexer?.toLowerCase().includes('bitmagnet') ? 'TorrentWave' : result.Indexer}</span>
                   </div>
                 </td>
                 <td className="px-6 py-4 font-mono text-slate-400 whitespace-nowrap">{formatBytes(result.Size)}</td>
@@ -311,15 +311,17 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
                       </button>
                     </div>
 
-                    <a
-                      href={result.Details}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2 text-slate-400 hover:text-sky-400 hover:bg-sky-400/10 rounded-lg transition-all"
-                      title="View on Tracker"
-                    >
-                      <ExternalLinkIcon />
-                    </a>
+                    {!result.Indexer?.toLowerCase().includes('bitmagnet') && (
+                      <a
+                        href={result.Details}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 text-slate-400 hover:text-sky-400 hover:bg-sky-400/10 rounded-lg transition-all"
+                        title="View on Tracker"
+                      >
+                        <ExternalLinkIcon />
+                      </a>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -335,7 +337,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
             <div className="mb-3">
               <h3 className="font-semibold text-slate-100 leading-snug mb-1">{result.Title}</h3>
               <div className="flex items-center gap-2 text-xs text-slate-500">
-                <span className="bg-slate-900/50 px-2 py-0.5 rounded border border-slate-700/50">{result.Indexer}</span>
+                <span className="bg-slate-900/50 px-2 py-0.5 rounded border border-slate-700/50">{result.Indexer?.toLowerCase().includes('bitmagnet') ? 'TorrentWave' : result.Indexer}</span>
                 <span className="truncate max-w-[120px]">{result.CategoryDesc}</span>
                 <span className="ml-auto font-mono">{new Date(result.PublishDate).toLocaleDateString()}</span>
               </div>
@@ -369,15 +371,17 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
                 )}
                 {activeCopyMagnetId === result.Id ? 'Copied!' : 'Copy Magnet'}
               </button>
-              <a
-                href={result.Details}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-slate-700 hover:bg-slate-600 text-slate-300 py-2.5 px-4 rounded-lg flex items-center justify-center transition-colors border border-slate-600"
-                aria-label="View on Tracker"
-              >
-                <ExternalLinkIcon />
-              </a>
+              {!result.Indexer?.toLowerCase().includes('bitmagnet') && (
+                <a
+                  href={result.Details}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-slate-700 hover:bg-slate-600 text-slate-300 py-2.5 px-4 rounded-lg flex items-center justify-center transition-colors border border-slate-600"
+                  aria-label="View on Tracker"
+                >
+                  <ExternalLinkIcon />
+                </a>
+              )}
             </div>
           </div>
         ))}
