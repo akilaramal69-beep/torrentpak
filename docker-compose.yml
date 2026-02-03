@@ -9,11 +9,7 @@ services:
     depends_on:
       - jackett
       - redis
-    # Memory limit for 8GB VPS
-    deploy:
-      resources:
-        limits:
-          memory: 1G
+    mem_limit: 1g
     logging:
       driver: "json-file"
       options:
@@ -24,12 +20,8 @@ services:
     image: redis:alpine
     container_name: torrentwave_redis
     restart: unless-stopped
-    # Optimized Redis for caching with memory limit
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
-    deploy:
-      resources:
-        limits:
-          memory: 300M
+    mem_limit: 300m
     logging:
       driver: "json-file"
       options:
@@ -49,10 +41,7 @@ services:
       - ./jackett_config:/config
       - ./downloads:/downloads
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 1G
+    mem_limit: 1g
     logging:
       driver: "json-file"
       options:
@@ -68,10 +57,7 @@ services:
     ports:
       - "8191:8191"
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 512M
+    mem_limit: 512m
     logging:
       driver: "json-file"
       options:
@@ -93,10 +79,7 @@ services:
       - caddy_config:/config
     depends_on:
       - app
-    deploy:
-      resources:
-        limits:
-          memory: 256M
+    mem_limit: 256m
     logging:
       driver: "json-file"
       options:
@@ -108,16 +91,15 @@ services:
     image: ghcr.io/bitmagnet-io/bitmagnet:latest
     container_name: bitmagnet
     ports:
-      - "3333:3333"   # Web UI & API
-      - "3334:3334/tcp"  # BitTorrent port
-      - "3334:3334/udp"  # DHT port
+      - "3333:3333"
+      - "3334:3334/tcp"
+      - "3334:3334/udp"
     environment:
       - POSTGRES_HOST=bitmagnet_postgres
       - POSTGRES_PASSWORD=bitmagnet_secret
       - DHT_CRAWLER_SAVE_PIECES=false
     depends_on:
-      bitmagnet_postgres:
-        condition: service_healthy
+      - bitmagnet_postgres
     command:
       - worker
       - run
@@ -125,10 +107,7 @@ services:
       - --keys=queue_server
       - --keys=dht_crawler
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 1G
+    mem_limit: 1g
     logging:
       driver: "json-file"
       options:
@@ -149,11 +128,7 @@ services:
       interval: 10s
       start_period: 20s
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-    # PostgreSQL optimized for 8GB VPS
+    mem_limit: 2g
     command:
       - postgres
       - -c
