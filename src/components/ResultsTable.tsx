@@ -28,16 +28,16 @@ const formatBytes = (bytes: number, decimals = 2): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
 
-const SeederPeers: React.FC<{ value: number, type: 'seeders' | 'peers', isEstimate?: boolean }> = ({ value, type, isEstimate }) => {
+const SeederPeers: React.FC<{ value: number, type: 'seeders' | 'peers' }> = ({ value, type }) => {
   const colorClass = type === 'seeders'
-    ? value > 50 ? 'text-green-400' : value > 10 ? 'text-yellow-400' : isEstimate ? 'text-slate-400' : 'text-red-400'
+    ? value > 50 ? 'text-green-400' : value > 10 ? 'text-yellow-400' : 'text-red-400'
     : 'text-sky-400';
   const Icon = type === 'seeders' ? SeedersIcon : PeersIcon;
 
   return (
-    <div className={`flex items-center justify-center text-center gap-1.5 font-mono ${colorClass}`} title={isEstimate ? 'Estimated from DHT' : undefined}>
+    <div className={`flex items-center justify-center text-center gap-1.5 font-mono ${colorClass}`}>
       <Icon />
-      <span>{isEstimate ? '~' : ''}{value}</span>
+      <span>{value}</span>
     </div>
   );
 };
@@ -285,10 +285,10 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
                 </td>
                 <td className="px-6 py-4 font-mono text-slate-400 whitespace-nowrap">{formatBytes(result.Size)}</td>
                 <td className="px-6 py-4 text-center">
-                  <SeederPeers value={result.Seeders} type="seeders" isEstimate={result.Indexer?.toLowerCase().includes('bitmagnet')} />
+                  <SeederPeers value={result.Seeders} type="seeders" />
                 </td>
                 <td className="px-6 py-4 text-center">
-                  <SeederPeers value={result.Peers} type="peers" isEstimate={result.Indexer?.toLowerCase().includes('bitmagnet')} />
+                  <SeederPeers value={result.Peers} type="peers" />
                 </td>
                 <td className="px-6 py-4 text-center font-mono text-xs text-slate-500 whitespace-nowrap">
                   {new Date(result.PublishDate).toLocaleDateString()}
@@ -350,11 +350,11 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
               </div>
               <div className="flex flex-col items-center border-l border-r border-slate-700/30">
                 <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Seeds</span>
-                <SeederPeers value={result.Seeders} type="seeders" isEstimate={result.Indexer?.toLowerCase().includes('bitmagnet')} />
+                <SeederPeers value={result.Seeders} type="seeders" />
               </div>
               <div className="flex flex-col items-center">
                 <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Peers</span>
-                <SeederPeers value={result.Peers} type="peers" isEstimate={result.Indexer?.toLowerCase().includes('bitmagnet')} />
+                <SeederPeers value={result.Peers} type="peers" />
               </div>
             </div>
 

@@ -168,6 +168,91 @@ def enrich_results(data):
             
     return data
 
+# Bitmagnet GraphQL - Direct query for accurate seeder/leecher counts
+BITMAGNET_URL = os.getenv('BITMAGNET_URL', 'http://bitmagnet:3333')
+
+def search_bitmagnet(query, limit=50):
+    """Query Bitmagnet GraphQL API directly for accurate seeder/leecher counts"""
+    try:
+        graphql_query = {
+            "query": """
+                query Search($query: String!, $limit: Int) {
+                    torrentContent {
+                        search(input: { queryString: $query, limit: $limit }) {
+                            items {
+                                infoHash
+                                title
+                                contentType
+                                seeders
+                                leechers
+                                publishedAt
+                                torrent {
+                                    name
+                                    size
+                                    magnetUri
+                                }
+                            }
+                        }
+                    }
+                }
+            """,
+            "variables": {
+                "query": f"{query}*",  # Wildcard for partial matching
+                "limit": limit
+            }
+        }
+        
+        response = http_session.post(
+            f"{BITMAGNET_URL}/graphql",
+            json=graphql_query,
+            timeout=10
+        )
+        
+        if response.status_code != 200:
+            print(f"⚠️ Bitmagnet returned {response.status_code}", file=sys.stderr)
+            return []
+            
+        data = response.json()
+        
+        if data.get('errors'):
+            print(f"⚠️ Bitmagnet GraphQL error: {data['errors']}", file=sys.stderr)
+            return []
+            
+        items = data.get('data', {}).get('torrentContent', {}).get('search', {}).get('items', [])
+        
+        # Convert to Jackett-compatible format
+        results = []
+        tracker_query = "&".join([f"tr={urllib.parse.quote(t)}" for t in PUBLIC_TRACKERS])
+        
+        for idx, item in enumerate(items):
+            torrent = item.get('torrent', {})
+            magnet = torrent.get('magnetUri') or f"magnet:?xt=urn:btih:{item.get('infoHash')}&dn={urllib.parse.quote(item.get('title', ''))}"
+            
+            # Add trackers if missing
+            if magnet and 'tr=' not in magnet:
+                magnet = f"{magnet}&{tracker_query}"
+            
+            results.append({
+                'Id': f"bm_{idx}_{item.get('infoHash', '')[:8]}",
+                'Title': torrent.get('name') or item.get('title', 'Unknown'),
+                'Size': torrent.get('size', 0),
+                'Seeders': item.get('seeders', 0),
+                'Peers': item.get('leechers', 0),
+                'PublishDate': item.get('publishedAt', ''),
+                'MagnetUri': magnet,
+                'Indexer': 'bitmagnet',  # Used by frontend to identify TorrentWave results
+                'CategoryDesc': item.get('contentType', 'Unknown'),
+                'Details': '',  # No external page for DHT torrents
+                'InfoHash': item.get('infoHash', '')
+            })
+        
+        print(f"🧲 Bitmagnet returned {len(results)} results", file=sys.stderr)
+        return results
+        
+    except Exception as e:
+        print(f"⚠️ Bitmagnet query failed: {e}", file=sys.stderr)
+        return []
+
 @app.route('/api/search', methods=['GET'])
 @cache.cached(timeout=300, query_string=True)
 def search_torrents():
@@ -283,6 +368,32 @@ def search_torrents():
                             except Exception as rel_e:
                                 print(f"⚠️ Relevance filter error: {rel_e}", file=sys.stderr)
                                 pass
+
+                        # Query Bitmagnet directly for accurate seeder/leecher counts
+                        bitmagnet_results = search_bitmagnet(query, limit=100)
+                        
+                        if bitmagnet_results:
+                            # Deduplicate by infoHash - prefer Bitmagnet (accurate peers) over Jackett
+                            seen_hashes = set()
+                            merged = []
+                            
+                            # Add Bitmagnet results first (they have accurate seeder/leecher)
+                            for r in bitmagnet_results:
+                                h = r.get('InfoHash', '').lower()
+                                if h and h not in seen_hashes:
+                                    seen_hashes.add(h)
+                                    merged.append(r)
+                            
+                            # Add Jackett results that aren't duplicates
+                            for r in results:
+                                h = (r.get('InfoHash') or '').lower()
+                                if not h or h not in seen_hashes:
+                                    merged.append(r)
+                                    if h:
+                                        seen_hashes.add(h)
+                            
+                            results = merged
+                            print(f"🔀 Merged: {len(bitmagnet_results)} Bitmagnet + Jackett = {len(results)} total", file=sys.stderr)
 
                         data['Results'] = results
                         print(f"✅ Found {len(results)} results", file=sys.stderr, flush=True)
