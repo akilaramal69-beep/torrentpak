@@ -98,6 +98,10 @@ services:
       - POSTGRES_HOST=bitmagnet_postgres
       - POSTGRES_PASSWORD=bitmagnet_secret
       - DHT_CRAWLER_SAVE_PIECES=false
+      # Speed optimizations for faster indexing
+      - DHT_CRAWLER_SCALING_FACTOR=10
+      - DHT_CRAWLER_BOOST_WORKERS=200
+      - QUEUE_CONCURRENCY=50
     depends_on:
       - bitmagnet_postgres
     command:
