@@ -210,27 +210,39 @@ def search_bitmagnet(query, category=None, limit=100):
             bm_type = JACKETT_TO_BITMAGNET[category]
             content_type_filter = f', contentType: {bm_type}'
         
+def search_bitmagnet(query, category=None, limit=200):
+    """Query Bitmagnet GraphQL API directly for accurate seeder/leecher counts"""
+    try:
+        # Better query handling: append wildcard to each word for partial matching
+        search_terms = query.split()
+        broad_query = ' '.join([f"{word}*" for word in search_terms if len(word) >= 2])
+        if not broad_query:
+            broad_query = f"{query}*"
+        
+        # NOTE: filtering by contentType in GraphQL can be brittle if types don't match exactly.
+        # We fetch broader results and filter in Python to be safe.
+        
         graphql_query = {
-            "query": f"""
-                query Search($query: String!, $limit: Int) {{
-                    torrentContent {{
-                        search(input: {{ queryString: $query, limit: $limit{content_type_filter} }}) {{
-                            items {{
+            "query": """
+                query Search($query: String!, $limit: Int) {
+                    torrentContent {
+                        search(input: { queryString: $query, limit: $limit }) {
+                            items {
                                 infoHash
                                 title
                                 contentType
                                 seeders
                                 leechers
                                 publishedAt
-                                torrent {{
+                                torrent {
                                     name
                                     size
                                     magnetUri
-                                }}
-                            }}
-                        }}
-                    }}
-                }}
+                                }
+                            }
+                        }
+                    }
+                }
             """,
             "variables": {
                 "query": broad_query,
@@ -260,7 +272,22 @@ def search_bitmagnet(query, category=None, limit=100):
         results = []
         tracker_query = "&".join([f"tr={urllib.parse.quote(t)}" for t in PUBLIC_TRACKERS])
         
+        target_cat_id = int(category) if category and category.isdigit() else None
+        
         for idx, item in enumerate(items):
+            # Map contentType to category
+            content_type = (item.get('contentType') or '').lower()
+            cat_info = BITMAGNET_CATEGORY_MAP.get(content_type, {'id': 8000, 'name': '📦 Other'})
+            
+            # Python-side Category Filtering
+            if target_cat_id:
+                # If mapped ID doesn't match requested ID
+                if cat_info['id'] != target_cat_id:
+                    # Special case: requested 2040/2045 (HD/4K) should match 2000 (Movies)
+                    if not (str(target_cat_id).startswith('20') and cat_info['id'] == 2000):
+                        if not (str(target_cat_id).startswith('50') and cat_info['id'] == 5000):
+                            continue
+
             torrent = item.get('torrent', {})
             magnet = torrent.get('magnetUri') or f"magnet:?xt=urn:btih:{item.get('infoHash')}&dn={urllib.parse.quote(item.get('title', ''))}"
             
@@ -268,26 +295,22 @@ def search_bitmagnet(query, category=None, limit=100):
             if magnet and 'tr=' not in magnet:
                 magnet = f"{magnet}&{tracker_query}"
             
-            # Map contentType to category
-            content_type = (item.get('contentType') or '').lower()
-            cat_info = BITMAGNET_CATEGORY_MAP.get(content_type, {'id': 8000, 'name': '📦 Other'})
-            
             results.append({
                 'Id': f"bm_{idx}_{item.get('infoHash', '')[:8]}",
                 'Title': torrent.get('name') or item.get('title', 'Unknown'),
                 'Size': torrent.get('size', 0),
-                'Seeders': item.get('seeders', 0),
-                'Peers': item.get('leechers', 0),
+                'Seeders': int(item.get('seeders') or 0),
+                'Peers': int(item.get('leechers') or 0),
                 'PublishDate': item.get('publishedAt', ''),
                 'MagnetUri': magnet,
                 'Indexer': 'bitmagnet',
                 'CategoryDesc': cat_info['name'],
                 'Category': [cat_info['id']],
-                'Details': '',
+                'Details': None,  # Explicitly None to prevent "View on Tracker"
                 'InfoHash': item.get('infoHash', '')
             })
         
-        print(f"🧲 Bitmagnet returned {len(results)} results", file=sys.stderr)
+        print(f"🧲 Bitmagnet returned {len(results)} results (after filter)", file=sys.stderr)
         return results
         
     except Exception as e:
