@@ -171,33 +171,69 @@ def enrich_results(data):
 # Bitmagnet GraphQL - Direct query for accurate seeder/leecher counts
 BITMAGNET_URL = os.getenv('BITMAGNET_URL', 'http://bitmagnet:3333')
 
-def search_bitmagnet(query, limit=50):
+# Map Bitmagnet contentType to Jackett category IDs and display names
+BITMAGNET_CATEGORY_MAP = {
+    'movie': {'id': 2000, 'name': '🎬 Movies'},
+    'tv_show': {'id': 5000, 'name': '📺 TV Shows'},
+    'music': {'id': 3000, 'name': '🎵 Music'},
+    'ebook': {'id': 7000, 'name': '📚 Books'},
+    'comic': {'id': 7030, 'name': '📖 Comics'},
+    'audiobook': {'id': 3030, 'name': '🎧 Audiobooks'},
+    'software': {'id': 6000, 'name': '💻 Software'},
+    'game': {'id': 4000, 'name': '🎮 Games'},
+    'xxx': {'id': 8000, 'name': '📦 Other'},
+}
+
+# Reverse map: Jackett category IDs to Bitmagnet contentType
+JACKETT_TO_BITMAGNET = {
+    '2000': 'movie', '2040': 'movie', '2045': 'movie',
+    '5000': 'tv_show', '5040': 'tv_show', '5045': 'tv_show', '5070': 'tv_show',
+    '3000': 'music',
+    '3030': 'audiobook',
+    '4000': 'game', '1000': 'game',
+    '6000': 'software',
+    '7000': 'ebook', '7030': 'comic',
+}
+
+def search_bitmagnet(query, category=None, limit=100):
     """Query Bitmagnet GraphQL API directly for accurate seeder/leecher counts"""
     try:
+        # Better query handling: append wildcard to each word for partial matching
+        search_terms = query.split()
+        broad_query = ' '.join([f"{word}*" for word in search_terms if len(word) >= 2])
+        if not broad_query:
+            broad_query = f"{query}*"
+        
+        # Build GraphQL query with optional content type filter
+        content_type_filter = ""
+        if category and category in JACKETT_TO_BITMAGNET:
+            bm_type = JACKETT_TO_BITMAGNET[category]
+            content_type_filter = f', contentType: {bm_type}'
+        
         graphql_query = {
-            "query": """
-                query Search($query: String!, $limit: Int) {
-                    torrentContent {
-                        search(input: { queryString: $query, limit: $limit }) {
-                            items {
+            "query": f"""
+                query Search($query: String!, $limit: Int) {{
+                    torrentContent {{
+                        search(input: {{ queryString: $query, limit: $limit{content_type_filter} }}) {{
+                            items {{
                                 infoHash
                                 title
                                 contentType
                                 seeders
                                 leechers
                                 publishedAt
-                                torrent {
+                                torrent {{
                                     name
                                     size
                                     magnetUri
-                                }
-                            }
-                        }
-                    }
-                }
+                                }}
+                            }}
+                        }}
+                    }}
+                }}
             """,
             "variables": {
-                "query": f"{query}*",  # Wildcard for partial matching
+                "query": broad_query,
                 "limit": limit
             }
         }
@@ -205,7 +241,7 @@ def search_bitmagnet(query, limit=50):
         response = http_session.post(
             f"{BITMAGNET_URL}/graphql",
             json=graphql_query,
-            timeout=10
+            timeout=15
         )
         
         if response.status_code != 200:
@@ -232,6 +268,10 @@ def search_bitmagnet(query, limit=50):
             if magnet and 'tr=' not in magnet:
                 magnet = f"{magnet}&{tracker_query}"
             
+            # Map contentType to category
+            content_type = (item.get('contentType') or '').lower()
+            cat_info = BITMAGNET_CATEGORY_MAP.get(content_type, {'id': 8000, 'name': '📦 Other'})
+            
             results.append({
                 'Id': f"bm_{idx}_{item.get('infoHash', '')[:8]}",
                 'Title': torrent.get('name') or item.get('title', 'Unknown'),
@@ -240,9 +280,10 @@ def search_bitmagnet(query, limit=50):
                 'Peers': item.get('leechers', 0),
                 'PublishDate': item.get('publishedAt', ''),
                 'MagnetUri': magnet,
-                'Indexer': 'bitmagnet',  # Used by frontend to identify TorrentWave results
-                'CategoryDesc': item.get('contentType', 'Unknown'),
-                'Details': '',  # No external page for DHT torrents
+                'Indexer': 'bitmagnet',
+                'CategoryDesc': cat_info['name'],
+                'Category': [cat_info['id']],
+                'Details': '',
                 'InfoHash': item.get('infoHash', '')
             })
         
@@ -370,7 +411,7 @@ def search_torrents():
                                 pass
 
                         # Query Bitmagnet directly for accurate seeder/leecher counts
-                        bitmagnet_results = search_bitmagnet(query, limit=100)
+                        bitmagnet_results = search_bitmagnet(query, category=category, limit=100)
                         
                         if bitmagnet_results:
                             # Deduplicate by infoHash - prefer Bitmagnet (accurate peers) over Jackett
