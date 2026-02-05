@@ -195,21 +195,6 @@ JACKETT_TO_BITMAGNET = {
     '7000': 'ebook', '7030': 'comic',
 }
 
-def search_bitmagnet(query, category=None, limit=100):
-    """Query Bitmagnet GraphQL API directly for accurate seeder/leecher counts"""
-    try:
-        # Better query handling: append wildcard to each word for partial matching
-        search_terms = query.split()
-        broad_query = ' '.join([f"{word}*" for word in search_terms if len(word) >= 2])
-        if not broad_query:
-            broad_query = f"{query}*"
-        
-        # Build GraphQL query with optional content type filter
-        content_type_filter = ""
-        if category and category in JACKETT_TO_BITMAGNET:
-            bm_type = JACKETT_TO_BITMAGNET[category]
-            content_type_filter = f', contentType: {bm_type}'
-        
 def search_bitmagnet(query, category=None, limit=200):
     """Query Bitmagnet GraphQL API directly for accurate seeder/leecher counts"""
     try:
