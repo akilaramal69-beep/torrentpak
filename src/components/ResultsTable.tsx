@@ -335,7 +335,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
         {currentResults.map((result) => (
           <div key={result.Id} className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 shadow-lg active:scale-[0.99] transition-transform">
             <div className="mb-3">
-              <h3 className="font-semibold text-slate-100 leading-snug mb-1">{result.Title}</h3>
+              <h3 className="font-semibold text-slate-100 leading-snug mb-1 break-words">{result.Title}</h3>
               <div className="flex items-center gap-2 text-xs text-slate-500">
                 <span className="bg-slate-900/50 px-2 py-0.5 rounded border border-slate-700/50">{result.Indexer?.toLowerCase().includes('bitmagnet') ? 'TorrentWave' : result.Indexer}</span>
                 <span className="truncate max-w-[120px]">{result.CategoryDesc}</span>

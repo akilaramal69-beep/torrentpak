@@ -26,7 +26,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ query, setQuery, onSearch, isLoad
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={disabled ? "Please configure settings first" : "Search for movies, series, games..."}
-        className="w-full pl-5 pr-32 py-4 bg-slate-800 border border-slate-700 rounded-full text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all duration-300 disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+        className="w-full pl-5 pr-16 md:pr-32 py-4 bg-slate-800 border border-slate-700 rounded-full text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all duration-300 disabled:bg-slate-800/50 disabled:cursor-not-allowed"
         disabled={isLoading || disabled}
       />
       <button
@@ -37,12 +37,12 @@ const SearchBar: React.FC<SearchBarProps> = ({ query, setQuery, onSearch, isLoad
         {isLoading ? (
           <>
             <SpinnerIcon />
-            Searching...
+            <span className="hidden md:inline ml-2">Searching...</span>
           </>
         ) : (
           <>
             <SearchIcon />
-            Search
+            <span className="hidden md:inline ml-2">Search</span>
           </>
         )}
       </button>
