@@ -458,19 +458,9 @@ def search_torrents():
                     
                     matches = sum(1 for word in query_words if word in title_normalized)
                     
-                    # Stricter Relevance Filter
-                    # 1. Short queries (1-2 words): Require ALL words to match (100%)
-                    # 2. Medium queries (3-4 words): Allow at most 1 missing word
-                    # 3. Long queries (5+ words): Require 70% match
-                    
-                    if len(query_words) <= 2:
-                        required_matches = len(query_words)
-                    elif len(query_words) <= 4:
-                        required_matches = len(query_words) - 1
-                    else:
-                        required_matches = int(len(query_words) * 0.7)
-                    
-                    if matches >= required_matches:
+                    # STRICT EXACT MATCH enforce by User Request
+                    # ALL words must be present in the title.
+                    if matches >= len(query_words):
                         relevant_results.append(r)
                 
                 print(f"🎯 Relevance Filter: {len(final_results)} -> {len(relevant_results)} (Removed {len(final_results) - len(relevant_results)})", file=sys.stderr)
