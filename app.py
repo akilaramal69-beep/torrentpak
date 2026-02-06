@@ -406,7 +406,7 @@ def search_torrents():
 
     # Parallel Execution: Search both sources concurrently
     with ThreadPoolExecutor(max_workers=2) as executor:
-        future_jackett = executor.submit(search_jackett, query, category, timeout=20)
+        future_jackett = executor.submit(search_jackett, query, category, timeout=60)
         future_bitmagnet = executor.submit(search_bitmagnet, query, category, limit=100)
         
         # Wait for both to complete (or fail/timeout internally)
