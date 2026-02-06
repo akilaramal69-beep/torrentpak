@@ -102,6 +102,9 @@ services:
       - DHT_CRAWLER_SCALING_FACTOR=10
       - DHT_CRAWLER_BOOST_WORKERS=200
       - QUEUE_CONCURRENCY=50
+      # Content Filters to save space
+      - CLASSIFIER_FLAGS_XXX=true
+      - CLASSIFIER_DELETE_XXX=true
     depends_on:
       - bitmagnet_postgres
     command:
