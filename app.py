@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import requests
 import urllib.parse
 from flask_caching import Cache
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 load_dotenv()
 
@@ -302,6 +303,78 @@ def search_bitmagnet(query, category=None, limit=200):
         print(f"⚠️ Bitmagnet query failed: {e}", file=sys.stderr)
         return []
 
+def search_jackett(query, category=None, timeout=20):
+    """Wrapper to search Jackett with strict timeout"""
+    try:
+        if not JACKETT_API_KEY:
+            return []
+
+        # SPEED: Try internal Docker URL first (fastest), then configured URL
+        base_urls = ["http://jackett:9117"]
+        if JACKETT_URL and "jackett:9117" not in JACKETT_URL:
+            base_urls.append(JACKETT_URL.rstrip('/'))
+        
+        path = "/api/v2.0/indexers/all/results"
+        
+        # Try each Jackett URL until one works
+        for base in base_urls:
+            try:
+                url = f"{base}{path}"
+                params = {
+                    'apikey': JACKETT_API_KEY,
+                    'Query': query
+                }
+                
+                if category and category != 'all' and category != 'undefined' and category != '':
+                    params['Category[]'] = category
+                    
+                print(f"🔍 Searching Jackett: {url}", file=sys.stderr, flush=True)
+                response = http_session.get(url, params=params, timeout=timeout, verify=False)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    data = enrich_results(data)
+                    path_results = data.get('Results', [])
+                    
+                    # Apply Category Filtering to Jackett results immediately
+                    if category and category != 'all':
+                        target_cat = int(category)
+                        filtered_path_results = []
+                        for r in path_results:
+                            cat = r.get('Category', [])
+                            if isinstance(cat, (int, str)):
+                                cat_list = [int(cat)]
+                            elif isinstance(cat, list):
+                                cat_list = [int(c) for c in cat if str(c).isdigit()]
+                            else:
+                                continue
+
+                            target_prefix = str(target_cat)[0:2]
+                            match = False
+                            for c in cat_list:
+                                if c == target_cat:
+                                    match = True
+                                    break
+                                if str(target_cat).endswith('00') and str(c).startswith(target_prefix):
+                                    match = True
+                                    break
+                            
+                            if match:
+                                filtered_path_results.append(r)
+                        path_results = filtered_path_results
+
+                    print(f"✅ Jackett found {len(path_results)} results", file=sys.stderr)
+                    return path_results
+                else:
+                    print(f"⚠️ Jackett returned {response.status_code}", file=sys.stderr)
+            except Exception as e:
+                print(f"⚠️ Jackett connection failed: {e}", file=sys.stderr)
+                continue
+    except Exception as e:
+        print(f"⚠️ Jackett search error: {e}", file=sys.stderr)
+    
+    return []
+
 @app.route('/api/search', methods=['GET'])
 @cache.cached(timeout=300, query_string=True)
 def search_torrents():
@@ -327,82 +400,27 @@ def search_torrents():
     bitmagnet_results = []
     errors = []
 
-    # --- 1. SEARCH JACKETT ---
-    if JACKETT_API_KEY:
+    jackett_results = []
+    bitmagnet_results = []
+    errors = []
+
+    # Parallel Execution: Search both sources concurrently
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_jackett = executor.submit(search_jackett, query, category, timeout=20)
+        future_bitmagnet = executor.submit(search_bitmagnet, query, category, limit=100)
+        
+        # Wait for both to complete (or fail/timeout internally)
         try:
-            # SPEED: Try internal Docker URL first (fastest), then configured URL
-            base_urls = ["http://jackett:9117"]
-            if JACKETT_URL and "jackett:9117" not in JACKETT_URL:
-                base_urls.append(JACKETT_URL.rstrip('/'))
-            
-            path = "/api/v2.0/indexers/all/results"
-            
-            # Try each Jackett URL until one works
-            for base in base_urls:
-                try:
-                    url = f"{base}{path}"
-                    params = {
-                        'apikey': JACKETT_API_KEY,
-                        'Query': query
-                    }
-                    
-                    if category and category != 'all' and category != 'undefined' and category != '':
-                        params['Category[]'] = category
-                        
-                    print(f"🔍 Searching Jackett: {url}", file=sys.stderr, flush=True)
-                    response = http_session.get(url, params=params, timeout=60, verify=False)
-                    
-                    if response.status_code == 200:
-                        data = response.json()
-                        data = enrich_results(data)
-                        path_results = data.get('Results', [])
-                        
-                        # Apply Category Filtering to Jackett results immediately
-                        if category and category != 'all':
-                            target_cat = int(category)
-                            filtered_path_results = []
-                            for r in path_results:
-                                cat = r.get('Category', [])
-                                if isinstance(cat, (int, str)):
-                                    cat_list = [int(cat)]
-                                elif isinstance(cat, list):
-                                    cat_list = [int(c) for c in cat if str(c).isdigit()]
-                                else:
-                                    continue
-
-                                target_prefix = str(target_cat)[0:2]
-                                match = False
-                                for c in cat_list:
-                                    if c == target_cat:
-                                        match = True
-                                        break
-                                    if str(target_cat).endswith('00') and str(c).startswith(target_prefix):
-                                        match = True
-                                        break
-                                
-                                if match:
-                                    filtered_path_results.append(r)
-                            path_results = filtered_path_results
-
-                        jackett_results = path_results
-                        print(f"✅ Jackett found {len(jackett_results)} results", file=sys.stderr)
-                        break # Stop at first successful Jackett connection
-                    else:
-                        print(f"⚠️ Jackett returned {response.status_code}", file=sys.stderr)
-                except Exception as e:
-                    print(f"⚠️ Jackett connection failed: {e}", file=sys.stderr)
-                    continue
-
+            jackett_results = future_jackett.result()
         except Exception as e:
-            print(f"⚠️ Jackett search error: {e}", file=sys.stderr)
-            errors.append(str(e))
-    
-    # --- 2. SEARCH BITMAGNET --- (Runs even if Jackett fails)
-    try:
-        bitmagnet_results = search_bitmagnet(query, category=category, limit=100)
-    except Exception as e:
-        print(f"⚠️ Bitmagnet search error: {e}", file=sys.stderr)
-        errors.append(str(e))
+            print(f"⚠️ Jackett execution error: {e}", file=sys.stderr)
+            errors.append(f"Jackett: {e}")
+            
+        try:
+            bitmagnet_results = future_bitmagnet.result()
+        except Exception as e:
+            print(f"⚠️ Bitmagnet execution error: {e}", file=sys.stderr)
+            errors.append(f"Bitmagnet: {e}")
 
     # --- 3. MERGE & DEDUPLICATE ---
     seen_hashes = set()
