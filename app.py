@@ -390,8 +390,9 @@ def search_torrents():
     # Step 2: Replace common filename separators with spaces
     query = re.sub(r'[._\-]+', ' ', query)
     
-    # Step 3: Remove most special characters but keep alphanumeric, spaces, and colons (:)
-    query = re.sub(r'[^\w\s:]', '', query)
+    # Step 3: Replace all other non-alphanumeric characters (like : , ! ?) with spaces
+    # This fixes issues where "Title:" fails to match "Title" in filenames
+    query = re.sub(r'[^\w\s]', ' ', query)
     
     # Step 4: Collapse multiple spaces into one and strip
     query = re.sub(r'\s+', ' ', query).strip()
