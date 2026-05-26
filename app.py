@@ -490,10 +490,17 @@ def resolve_magnet():
                 return m
 
             # Strategy 2: Scan raw HTML for plain magnet links (href="magnet:..." or text)
+            # Simple pattern first - catch any magnet link in href attributes
             magnet_match = re.search(
-                r'magnet:\?xt=urn:btih:[a-zA-Z0-9]{32,40}(?:[^"\'<\s]|&amp;)*',
+                r'href="(magnet:[^"]+)"',
                 content_text, re.IGNORECASE
             )
+            if not magnet_match:
+                # Standard magnet pattern with xt=urn:btih
+                magnet_match = re.search(
+                    r'magnet:\?xt=urn:btih:[a-zA-Z0-9]{32,40}(?:[^"\'<\s]|&amp;)*',
+                    content_text, re.IGNORECASE
+                )
             if not magnet_match:
                 # Strategy 2.5: Look for magnet in data attributes (common in JS sites)
                 magnet_match = re.search(
@@ -562,10 +569,16 @@ def resolve_magnet():
             content_decoded = urllib.parse.unquote(content_text)
             
             # Retry all strategies with FlareSolverr content
+            # Simple href pattern first
             magnet_match = re.search(
-                r'magnet:\?xt=urn:btih:[a-zA-Z0-9]{32,40}(?:[^"\'<\s]|&amp;)*',
+                r'href="(magnet:[^"]+)"',
                 content_text, re.IGNORECASE
             )
+            if not magnet_match:
+                magnet_match = re.search(
+                    r'magnet:\?xt=urn:btih:[a-zA-Z0-9]{32,40}(?:[^"\'<\s]|&amp;)*',
+                    content_text, re.IGNORECASE
+                )
             if not magnet_match:
                 magnet_match = re.search(
                     r'data-magnet=["\']?(magnet:\?xt=urn:btih:[a-zA-Z0-9]{32,40}[^"\']*)',
