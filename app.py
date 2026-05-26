@@ -419,46 +419,80 @@ def search_jackett(query, category=None, timeout=20):
                 continue
     except Exception as e:
         print(f"⚠️ Jackett search error: {e}", file=sys.stderr)
-    
+
     return []
 
 @app.route('/api/resolve_magnet', methods=['GET'])
 def resolve_magnet():
     url = request.args.get('url')
     title = request.args.get('title', 'download')
+    info_hash_hint = request.args.get('infohash', '')  # Optional hint from frontend
     if not url:
         return jsonify({'error': 'No URL provided'}), 400
-    
-    try:
-        resp = http_session.get(url, timeout=10, verify=False)
-        if resp.status_code == 200:
-            # 1. Try scanning HTML for magnet links
-            try:
-                import re
-                content_text = resp.text
-                # Look for magnet link. Note: btih can be 32 (base32) or 40 (hex) chars.
-                magnet_match = re.search(r'(magnet:\?xt=urn:btih:[a-zA-Z0-9]{32,40}[^"\'\s<]*)', content_text)
-                if magnet_match:
-                    magnet = magnet_match.group(1)
-                    tracker_query = "&".join([f"tr={urllib.parse.quote(t)}" for t in PUBLIC_TRACKERS])
-                    if 'tr=' not in magnet:
-                        magnet = f"{magnet}&{tracker_query}"
-                    return jsonify({'magnet': magnet})
-            except Exception as e:
-                print(f"⚠️ Regex scrape error: {e}", file=sys.stderr)
 
-            # 2. Fall back to parsing as .torrent file
+    tracker_query = "&".join([f"tr={urllib.parse.quote(t)}" for t in PUBLIC_TRACKERS])
+
+    # Strategy 0: If we already have an InfoHash (passed as hint), build magnet immediately
+    if info_hash_hint and len(info_hash_hint) in (32, 40):
+        magnet = f"magnet:?xt=urn:btih:{info_hash_hint}&dn={urllib.parse.quote(title)}&{tracker_query}"
+        return jsonify({'magnet': magnet})
+
+    # Strategy 1: InfoHash embedded in the URL itself (common pattern: /torrent/HASH or ?hash=HASH)
+    hash_in_url = re.search(r'(?:infohash|btih|hash)[=/:]([a-fA-F0-9]{40})', url, re.IGNORECASE)
+    if hash_in_url:
+        magnet = f"magnet:?xt=urn:btih:{hash_in_url.group(1)}&dn={urllib.parse.quote(title)}&{tracker_query}"
+        return jsonify({'magnet': magnet})
+
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+        }
+        resp = http_session.get(url, timeout=12, verify=False, headers=headers, allow_redirects=True)
+
+        if resp.status_code == 200:
+            content_text = resp.text
+            content_decoded = urllib.parse.unquote(content_text)
+
+            # Strategy 2: Scan raw HTML for plain magnet links
+            magnet_match = re.search(
+                r'(magnet:\?xt=urn:btih:[a-zA-Z0-9]{32,40}[^"\'\\s<]*)',
+                content_text, re.IGNORECASE
+            )
+            if not magnet_match:
+                # Strategy 3: Scan URL-decoded content (handles magnet%3A%3F... encoding)
+                magnet_match = re.search(
+                    r'(magnet:\?xt=urn:btih:[a-zA-Z0-9]{32,40}[^"\'\\s<]*)',
+                    content_decoded, re.IGNORECASE
+                )
+            if not magnet_match:
+                # Strategy 4: Extract just the InfoHash from anywhere in the page
+                hash_match = re.search(r'urn:btih:([a-fA-F0-9]{40}|[a-zA-Z2-7]{32})', content_text, re.IGNORECASE)
+                if hash_match:
+                    magnet = f"magnet:?xt=urn:btih:{hash_match.group(1)}&dn={urllib.parse.quote(title)}&{tracker_query}"
+                    return jsonify({'magnet': magnet})
+
+            if magnet_match:
+                magnet = magnet_match.group(1)
+                # Clean up any trailing HTML entities
+                magnet = magnet.split('&amp;')[0] if '&amp;' in magnet else magnet
+                magnet = re.sub(r'["\'>].*$', '', magnet)
+                if 'tr=' not in magnet:
+                    magnet = f"{magnet}&{tracker_query}"
+                return jsonify({'magnet': magnet})
+
+            # Strategy 5: Fall back to parsing as .torrent file
             try:
                 data = bencode.bdecode(resp.content)
                 if b'info' in data:
                     info_hash = hashlib.sha1(bencode.bencode(data[b'info'])).hexdigest()
-                    tracker_query = "&".join([f"tr={urllib.parse.quote(t)}" for t in PUBLIC_TRACKERS])
                     magnet = f"magnet:?xt=urn:btih:{info_hash}&dn={urllib.parse.quote(title)}&{tracker_query}"
                     return jsonify({'magnet': magnet})
             except Exception:
-                pass # Not a valid bencode file
-                
-        return jsonify({'error': 'Failed to resolve torrent file or find magnet link'}), 400
+                pass
+
+        return jsonify({'error': f'Could not find magnet link (HTTP {resp.status_code})'}), 400
     except Exception as e:
         print(f"⚠️ Resolve magnet error: {e}", file=sys.stderr)
         return jsonify({'error': str(e)}), 500

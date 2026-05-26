@@ -103,13 +103,15 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
     { key: 'CategoryDesc', label: 'Category' },
   ];
 
-  const handleCopyMagnet = async (magnetUri: string | null, fallbackLink: string | undefined, title: string, id: number) => {
+  const handleCopyMagnet = async (magnetUri: string | null, fallbackLink: string | undefined, title: string, id: number, infoHash?: string | null) => {
     let finalMagnet = magnetUri;
 
-    if (!finalMagnet && fallbackLink) {
+    if (!finalMagnet && (fallbackLink || infoHash)) {
       setResolvingMagnetId(id);
       try {
-        const res = await fetch(`/api/resolve_magnet?url=${encodeURIComponent(fallbackLink)}&title=${encodeURIComponent(title)}`);
+        let apiUrl = `/api/resolve_magnet?url=${encodeURIComponent(fallbackLink || '')}&title=${encodeURIComponent(title)}`;
+        if (infoHash) apiUrl += `&infohash=${encodeURIComponent(infoHash)}`;
+        const res = await fetch(apiUrl);
         if (res.ok) {
           const data = await res.json();
           if (data.magnet) {
@@ -318,8 +320,8 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
                     {/* Copy Magnet Button */}
                     <div className="relative">
                       <button
-                        onClick={() => handleCopyMagnet(result.MagnetUri, result.FallbackLink, result.Title, result.Id)}
-                        disabled={(!result.MagnetUri && !result.FallbackLink) || resolvingMagnetId === result.Id}
+                        onClick={() => handleCopyMagnet(result.MagnetUri, result.FallbackLink, result.Title, result.Id, result.InfoHash)}
+                        disabled={(!result.MagnetUri && !result.FallbackLink && !result.InfoHash) || resolvingMagnetId === result.Id}
                         title={resolvingMagnetId === result.Id ? 'Resolving...' : activeCopyMagnetId === result.Id ? 'Copied!' : 'Copy Magnet Link'}
                         className={`p-2 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed ${activeCopyMagnetId === result.Id ? 'text-green-400 bg-green-400/10' : 'text-slate-400 hover:text-sky-400 hover:bg-sky-400/10'}`}
                       >
@@ -382,8 +384,8 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
 
             <div className="flex items-center gap-3">
               <button
-                onClick={() => handleCopyMagnet(result.MagnetUri, result.FallbackLink, result.Title, result.Id)}
-                disabled={(!result.MagnetUri && !result.FallbackLink) || resolvingMagnetId === result.Id}
+                onClick={() => handleCopyMagnet(result.MagnetUri, result.FallbackLink, result.Title, result.Id, result.InfoHash)}
+                disabled={(!result.MagnetUri && !result.FallbackLink && !result.InfoHash) || resolvingMagnetId === result.Id}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-semibold shadow-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${activeCopyMagnetId === result.Id ? 'bg-green-600 hover:bg-green-500 text-white shadow-green-900/20' : 'bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white shadow-sky-900/20'}`}
               >
                 {resolvingMagnetId === result.Id ? (
