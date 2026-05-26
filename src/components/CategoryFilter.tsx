@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Category } from '../types';
+import { ChevronDownIcon, ChevronUpIcon } from './Icons';
 
 interface CategoryFilterProps {
   categories: Category[];
@@ -9,6 +10,12 @@ interface CategoryFilterProps {
 }
 
 const CategoryFilter: React.FC<CategoryFilterProps> = ({ categories, selectedCategory, onCategoryChange, disabled }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const VISIBLE_COUNT = 6;
+
+  const visibleCategories = isExpanded ? categories : categories.slice(0, VISIBLE_COUNT);
+  const hasMore = categories.length > VISIBLE_COUNT;
+
   return (
     <div className="w-full">
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent">
@@ -23,7 +30,7 @@ const CategoryFilter: React.FC<CategoryFilterProps> = ({ categories, selectedCat
         >
           All
         </button>
-        {categories.map((cat) => (
+        {visibleCategories.map((cat) => (
           <button
             key={cat.id}
             onClick={() => onCategoryChange(cat.id)}
@@ -37,6 +44,25 @@ const CategoryFilter: React.FC<CategoryFilterProps> = ({ categories, selectedCat
             {cat.name}
           </button>
         ))}
+        {hasMore && (
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            disabled={disabled}
+            className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap bg-slate-700 text-slate-300 hover:bg-slate-600 border border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+          >
+            {isExpanded ? (
+              <>
+                Show Less
+                <ChevronUpIcon />
+              </>
+            ) : (
+              <>
+                Show More
+                <ChevronDownIcon />
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

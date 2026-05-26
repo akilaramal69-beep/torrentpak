@@ -87,6 +87,12 @@ export const ChevronDownIcon: React.FC = () => (
     </svg>
 );
 
+export const ChevronUpIcon: React.FC = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path>
+    </svg>
+);
+
 export const UsdtIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg className={className || "w-8 h-8 text-[#26A17B]"} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
       <path fillRule="evenodd" clipRule="evenodd" d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM12.6667 8.33333V16H11.3333V8.33333H7V7H17V8.33333H12.6667Z" fill="currentColor"/>
