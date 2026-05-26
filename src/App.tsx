@@ -38,22 +38,24 @@ function App() {
     const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
 
     const fetchCategories = async () => {
-        // Fast static categories - no slow API calls
+        // Universal Jackett category IDs - standard across all indexers
         setCategories([
             { id: '2000', name: '🎬 Movies' },
             { id: '2040', name: '🎬 Movies HD' },
             { id: '2045', name: '🎥 Movies 4K' },
-            { id: '5000', name: '📺 TV Shows' },
+            { id: '5000', name: '📺 TV' },
             { id: '5040', name: '📺 TV HD' },
             { id: '5045', name: '📺 TV 4K' },
             { id: '5070', name: '🎌 Anime' },
-            { id: '3000', name: '🎵 Music' },
+            { id: '3000', name: '🎵 Audio' },
             { id: '3030', name: '🎧 Audiobooks' },
-            { id: '4000', name: '🎮 PC Games' },
+            { id: '4000', name: '💻 PC' },
+            { id: '4050', name: '🎮 PC Games' },
             { id: '1000', name: '🕹️ Console' },
-            { id: '6000', name: '💻 Software' },
+            { id: '6000', name: '� XXX' },
             { id: '7000', name: '📚 Books' },
-            { id: '7030', name: '📖 Comics' },
+            { id: '7010', name: '📖 EBooks' },
+            { id: '7020', name: '🎨 Comics' },
             { id: '8000', name: '📦 Other' },
         ]);
     };

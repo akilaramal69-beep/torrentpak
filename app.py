@@ -179,14 +179,14 @@ BITMAGNET_URL = os.getenv('BITMAGNET_URL', 'http://bitmagnet:3333')
 # Map Bitmagnet contentType to Jackett category IDs and display names
 BITMAGNET_CATEGORY_MAP = {
     'movie': {'id': 2000, 'name': '🎬 Movies'},
-    'tv_show': {'id': 5000, 'name': '📺 TV Shows'},
-    'music': {'id': 3000, 'name': '🎵 Music'},
+    'tv_show': {'id': 5000, 'name': '📺 TV'},
+    'music': {'id': 3000, 'name': '🎵 Audio'},
     'ebook': {'id': 7000, 'name': '📚 Books'},
-    'comic': {'id': 7030, 'name': '📖 Comics'},
+    'comic': {'id': 7020, 'name': '🎨 Comics'},
     'audiobook': {'id': 3030, 'name': '🎧 Audiobooks'},
     'software': {'id': 6000, 'name': '💻 Software'},
-    'game': {'id': 4000, 'name': '🎮 Games'},
-    'xxx': {'id': 8000, 'name': '📦 Other'},
+    'game': {'id': 4050, 'name': '🎮 PC Games'},
+    'xxx': {'id': 6000, 'name': '� XXX'},
 }
 
 # Reverse map: Jackett category IDs to Bitmagnet contentType
@@ -195,9 +195,9 @@ JACKETT_TO_BITMAGNET = {
     '5000': 'tv_show', '5040': 'tv_show', '5045': 'tv_show', '5070': 'tv_show',
     '3000': 'music',
     '3030': 'audiobook',
-    '4000': 'game', '1000': 'game',
-    '6000': 'software',
-    '7000': 'ebook', '7030': 'comic',
+    '4000': 'game', '4050': 'game', '1000': 'game',
+    '6000': 'xxx',
+    '7000': 'ebook', '7010': 'ebook', '7020': 'comic', '7030': 'comic',
 }
 
 def search_bitmagnet(query, category=None, limit=200):
