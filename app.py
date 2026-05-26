@@ -455,34 +455,46 @@ def resolve_magnet():
             content_text = resp.text
             content_decoded = urllib.parse.unquote(content_text)
 
-            # Strategy 2: Scan raw HTML for plain magnet links
+            def clean_magnet(m):
+                """Normalize a scraped magnet string: fix &amp; encoding, strip trailing junk."""
+                m = m.replace('&amp;', '&')
+                m = re.sub(r'["\'>)\s].*$', '', m, flags=re.DOTALL)
+                return m
+
+            # Strategy 2: Scan raw HTML for plain magnet links (href="magnet:..." or text)
             magnet_match = re.search(
-                r'(magnet:\?xt=urn:btih:[a-zA-Z0-9]{32,40}[^"\'\\s<]*)',
+                r'magnet:\?xt=urn:btih:[a-zA-Z0-9]{32,40}(?:[^"\'<\s]|&amp;)*',
                 content_text, re.IGNORECASE
             )
             if not magnet_match:
-                # Strategy 3: Scan URL-decoded content (handles magnet%3A%3F... encoding)
+                # Strategy 3: URL-decoded content (handles magnet%3A%3F... encoding)
                 magnet_match = re.search(
-                    r'(magnet:\?xt=urn:btih:[a-zA-Z0-9]{32,40}[^"\'\\s<]*)',
+                    r'magnet:\?xt=urn:btih:[a-zA-Z0-9]{32,40}(?:[^"\'<\s]|&amp;)*',
                     content_decoded, re.IGNORECASE
                 )
-            if not magnet_match:
-                # Strategy 4: Extract just the InfoHash from anywhere in the page
-                hash_match = re.search(r'urn:btih:([a-fA-F0-9]{40}|[a-zA-Z2-7]{32})', content_text, re.IGNORECASE)
-                if hash_match:
-                    magnet = f"magnet:?xt=urn:btih:{hash_match.group(1)}&dn={urllib.parse.quote(title)}&{tracker_query}"
-                    return jsonify({'magnet': magnet})
 
             if magnet_match:
-                magnet = magnet_match.group(1)
-                # Clean up any trailing HTML entities
-                magnet = magnet.split('&amp;')[0] if '&amp;' in magnet else magnet
-                magnet = re.sub(r'["\'>].*$', '', magnet)
+                magnet = clean_magnet(magnet_match.group(0))
                 if 'tr=' not in magnet:
                     magnet = f"{magnet}&{tracker_query}"
                 return jsonify({'magnet': magnet})
 
-            # Strategy 5: Fall back to parsing as .torrent file
+            # Strategy 4: Extract InfoHash from embedded .torrent file URLs (e.g. itorrents.net/torrent/HASH.torrent)
+            torrent_url_hash = re.search(
+                r'/torrent/([a-fA-F0-9]{40})\.torrent',
+                content_text, re.IGNORECASE
+            )
+            if torrent_url_hash:
+                magnet = f"magnet:?xt=urn:btih:{torrent_url_hash.group(1)}&dn={urllib.parse.quote(title)}&{tracker_query}"
+                return jsonify({'magnet': magnet})
+
+            # Strategy 5: Extract just the InfoHash from anywhere in the page
+            hash_match = re.search(r'urn:btih:([a-fA-F0-9]{40}|[a-zA-Z2-7]{32})', content_text, re.IGNORECASE)
+            if hash_match:
+                magnet = f"magnet:?xt=urn:btih:{hash_match.group(1)}&dn={urllib.parse.quote(title)}&{tracker_query}"
+                return jsonify({'magnet': magnet})
+
+            # Strategy 6: Fall back to parsing response as .torrent file
             try:
                 data = bencode.bdecode(resp.content)
                 if b'info' in data:
