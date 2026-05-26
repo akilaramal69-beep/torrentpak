@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import type { TorrentResult } from '../types';
 import {
-  CategoryIcon, SeedersIcon, PeersIcon, SizeIcon, ClipboardCopyIcon,
-  ExternalLinkIcon, CloseIcon, SortAscIcon, SortDescIcon, SortIcon
+  CategoryIcon, SeedersIcon, PeersIcon, SizeIcon, SortAscIcon, SortDescIcon, SortIcon
 } from './Icons';
 
 interface ResultsTableProps {
@@ -47,16 +46,14 @@ const SkeletonRow: React.FC = () => (
     <td className="px-6 py-4"><div className="h-4 bg-slate-700/50 rounded w-24"></div></td>
     <td className="px-6 py-4">
       <div className="h-4 bg-slate-700/50 rounded w-3/4"></div>
-      <div className="h-3 bg-slate-700/50 rounded w-1/4 mt-2"></div>
     </td>
     <td className="px-6 py-4"><div className="h-4 bg-slate-700/50 rounded w-16"></div></td>
     <td className="px-6 py-4"><div className="h-4 bg-slate-700/50 rounded w-12"></div></td>
     <td className="px-6 py-4"><div className="h-4 bg-slate-700/50 rounded w-12"></div></td>
     <td className="px-6 py-4"><div className="h-4 bg-slate-700/50 rounded w-20"></div></td>
     <td className="px-6 py-4">
-      <div className="flex gap-2 justify-end">
-        <div className="h-8 w-8 bg-slate-700/50 rounded-lg"></div>
-        <div className="h-8 w-8 bg-slate-700/50 rounded-lg"></div>
+      <div className="flex justify-end">
+        <div className="h-8 w-24 bg-slate-700/50 rounded-lg"></div>
       </div>
     </td>
   </tr>
@@ -75,10 +72,7 @@ const SkeletonCard: React.FC = () => (
       <div className="h-4 bg-slate-700/50 rounded w-1/5"></div>
       <div className="h-4 bg-slate-700/50 rounded w-1/5"></div>
     </div>
-    <div className="flex gap-2">
-      <div className="h-10 bg-slate-700/50 rounded-lg w-full"></div>
-      <div className="h-10 bg-slate-700/50 rounded-lg w-12"></div>
-    </div>
+    <div className="h-10 bg-slate-700/50 rounded-lg w-full"></div>
   </div>
 );
 
@@ -300,10 +294,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
                   </div>
                 </td>
                 <td className="px-6 py-4 max-w-md">
-                  <div className="flex flex-col gap-1">
-                    <span className="font-medium text-slate-200 leading-snug group-hover:text-sky-300 transition-colors" title={result.Title}>{result.Title}</span>
-                    <span className="text-xs text-slate-500">{result.Indexer?.toLowerCase().includes('bitmagnet') ? 'TorrentWave' : result.Indexer}</span>
-                  </div>
+                  <span className="font-medium text-slate-200 leading-snug group-hover:text-sky-300 transition-colors" title={result.Title}>{result.Title}</span>
                 </td>
                 <td className="px-6 py-4 font-mono text-slate-400 whitespace-nowrap">{formatBytes(result.Size)}</td>
                 <td className="px-6 py-4 text-center">
@@ -316,37 +307,20 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
                   {new Date(result.PublishDate).toLocaleDateString()}
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <div className="flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
-                    {/* Copy Magnet Button */}
-                    <div className="relative">
-                      <button
-                        onClick={() => handleCopyMagnet(result.MagnetUri, result.FallbackLink, result.Title, result.Id, result.InfoHash)}
-                        disabled={(!result.MagnetUri && !result.FallbackLink && !result.InfoHash) || resolvingMagnetId === result.Id}
-                        title={resolvingMagnetId === result.Id ? 'Resolving...' : activeCopyMagnetId === result.Id ? 'Copied!' : 'Copy Magnet Link'}
-                        className={`p-2 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed ${activeCopyMagnetId === result.Id ? 'text-green-400 bg-green-400/10' : 'text-slate-400 hover:text-sky-400 hover:bg-sky-400/10'}`}
-                      >
-                        {resolvingMagnetId === result.Id ? (
-                          <svg className="animate-spin h-5 w-5 text-sky-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        ) : activeCopyMagnetId === result.Id ? (
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                        ) : (
-                          <ClipboardCopyIcon />
-                        )}
-                      </button>
-                    </div>
-
-                    {!result.Indexer?.toLowerCase().includes('bitmagnet') && (
-                      <a
-                        href={result.Details}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 text-slate-400 hover:text-sky-400 hover:bg-sky-400/10 rounded-lg transition-all"
-                        title="View on Tracker"
-                      >
-                        <ExternalLinkIcon />
-                      </a>
+                  <button
+                    onClick={() => handleCopyMagnet(result.MagnetUri, result.FallbackLink, result.Title, result.Id, result.InfoHash)}
+                    disabled={!result.MagnetUri || resolvingMagnetId === result.Id}
+                    title={resolvingMagnetId === result.Id ? 'Resolving...' : activeCopyMagnetId === result.Id ? 'Copied!' : 'Copy Magnet Link'}
+                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed ${activeCopyMagnetId === result.Id ? 'bg-green-600 text-white' : 'bg-sky-600 text-white hover:bg-sky-500'}`}
+                  >
+                    {resolvingMagnetId === result.Id ? (
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    ) : activeCopyMagnetId === result.Id ? (
+                      'Copied!'
+                    ) : (
+                      'Copy Magnet'
                     )}
-                  </div>
+                  </button>
                 </td>
               </tr>
             ))}
@@ -359,9 +333,8 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
         {currentResults.map((result) => (
           <div key={result.Id} className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 shadow-lg active:scale-[0.99] transition-transform">
             <div className="mb-3">
-              <h3 className="font-semibold text-slate-100 leading-snug mb-1 break-words">{result.Title}</h3>
+              <h3 className="font-semibold text-slate-100 leading-snug mb-2 break-words">{result.Title}</h3>
               <div className="flex items-center gap-2 text-xs text-slate-500">
-                <span className="bg-slate-900/50 px-2 py-0.5 rounded border border-slate-700/50">{result.Indexer?.toLowerCase().includes('bitmagnet') ? 'TorrentWave' : result.Indexer}</span>
                 <span className="truncate max-w-[120px]">{result.CategoryDesc}</span>
                 <span className="ml-auto font-mono">{new Date(result.PublishDate).toLocaleDateString()}</span>
               </div>
@@ -382,33 +355,19 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => handleCopyMagnet(result.MagnetUri, result.FallbackLink, result.Title, result.Id, result.InfoHash)}
-                disabled={(!result.MagnetUri && !result.FallbackLink && !result.InfoHash) || resolvingMagnetId === result.Id}
-                className={`flex-1 py-2.5 rounded-lg text-sm font-semibold shadow-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${activeCopyMagnetId === result.Id ? 'bg-green-600 hover:bg-green-500 text-white shadow-green-900/20' : 'bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white shadow-sky-900/20'}`}
-              >
-                {resolvingMagnetId === result.Id ? (
-                   <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                ) : activeCopyMagnetId === result.Id ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                ) : (
-                  <ClipboardCopyIcon />
-                )}
-                {resolvingMagnetId === result.Id ? 'Resolving...' : activeCopyMagnetId === result.Id ? 'Copied!' : 'Copy Magnet'}
-              </button>
-              {!result.Indexer?.toLowerCase().includes('bitmagnet') && (
-                <a
-                  href={result.Details}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-slate-700 hover:bg-slate-600 text-slate-300 py-2.5 px-4 rounded-lg flex items-center justify-center transition-colors border border-slate-600"
-                  aria-label="View on Tracker"
-                >
-                  <ExternalLinkIcon />
-                </a>
+            <button
+              onClick={() => handleCopyMagnet(result.MagnetUri, result.FallbackLink, result.Title, result.Id, result.InfoHash)}
+              disabled={!result.MagnetUri || resolvingMagnetId === result.Id}
+              className={`w-full py-3 rounded-lg text-sm font-semibold shadow-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${activeCopyMagnetId === result.Id ? 'bg-green-600 text-white' : 'bg-sky-600 text-white hover:bg-sky-500'}`}
+            >
+              {resolvingMagnetId === result.Id ? (
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              ) : activeCopyMagnetId === result.Id ? (
+                'Copied!'
+              ) : (
+                'Copy Magnet'
               )}
-            </div>
+            </button>
           </div>
         ))}
       </div>
