@@ -89,6 +89,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
   onAddToCloud
 }) => {
   const [activeCopyMagnetId, setActiveCopyMagnetId] = useState<number | null>(null);
+  const [resolvingMagnetId, setResolvingMagnetId] = useState<number | null>(null);
 
   // Filter out any invalid results before rendering (safety check)
   const currentResults = results.filter(r => r && r.Id);
@@ -102,8 +103,27 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
     { key: 'CategoryDesc', label: 'Category' },
   ];
 
-  const handleCopyMagnet = (magnetUri: string | null, id: number) => {
-    if (!magnetUri) {
+  const handleCopyMagnet = async (magnetUri: string | null, fallbackLink: string | undefined, title: string, id: number) => {
+    let finalMagnet = magnetUri;
+
+    if (!finalMagnet && fallbackLink) {
+      setResolvingMagnetId(id);
+      try {
+        const res = await fetch(`/api/resolve_magnet?url=${encodeURIComponent(fallbackLink)}&title=${encodeURIComponent(title)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.magnet) {
+            finalMagnet = data.magnet;
+          }
+        }
+      } catch (err) {
+        console.error('Failed to resolve magnet:', err);
+      } finally {
+        setResolvingMagnetId(null);
+      }
+    }
+
+    if (!finalMagnet) {
       console.error('Magnet link is not available.');
       return;
     }
@@ -298,12 +318,14 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
                     {/* Copy Magnet Button */}
                     <div className="relative">
                       <button
-                        onClick={() => handleCopyMagnet(result.MagnetUri, result.Id)}
-                        disabled={!result.MagnetUri}
-                        title={activeCopyMagnetId === result.Id ? 'Copied!' : 'Copy Magnet Link'}
+                        onClick={() => handleCopyMagnet(result.MagnetUri, result.FallbackLink, result.Title, result.Id)}
+                        disabled={(!result.MagnetUri && !result.FallbackLink) || resolvingMagnetId === result.Id}
+                        title={resolvingMagnetId === result.Id ? 'Resolving...' : activeCopyMagnetId === result.Id ? 'Copied!' : 'Copy Magnet Link'}
                         className={`p-2 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed ${activeCopyMagnetId === result.Id ? 'text-green-400 bg-green-400/10' : 'text-slate-400 hover:text-sky-400 hover:bg-sky-400/10'}`}
                       >
-                        {activeCopyMagnetId === result.Id ? (
+                        {resolvingMagnetId === result.Id ? (
+                          <svg className="animate-spin h-5 w-5 text-sky-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        ) : activeCopyMagnetId === result.Id ? (
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
                         ) : (
                           <ClipboardCopyIcon />
@@ -360,16 +382,18 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
 
             <div className="flex items-center gap-3">
               <button
-                onClick={() => handleCopyMagnet(result.MagnetUri, result.Id)}
-                disabled={!result.MagnetUri}
+                onClick={() => handleCopyMagnet(result.MagnetUri, result.FallbackLink, result.Title, result.Id)}
+                disabled={(!result.MagnetUri && !result.FallbackLink) || resolvingMagnetId === result.Id}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-semibold shadow-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${activeCopyMagnetId === result.Id ? 'bg-green-600 hover:bg-green-500 text-white shadow-green-900/20' : 'bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white shadow-sky-900/20'}`}
               >
-                {activeCopyMagnetId === result.Id ? (
+                {resolvingMagnetId === result.Id ? (
+                   <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                ) : activeCopyMagnetId === result.Id ? (
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
                 ) : (
                   <ClipboardCopyIcon />
                 )}
-                {activeCopyMagnetId === result.Id ? 'Copied!' : 'Copy Magnet'}
+                {resolvingMagnetId === result.Id ? 'Resolving...' : activeCopyMagnetId === result.Id ? 'Copied!' : 'Copy Magnet'}
               </button>
               {!result.Indexer?.toLowerCase().includes('bitmagnet') && (
                 <a

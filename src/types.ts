@@ -7,6 +7,7 @@ export interface TorrentResult {
   Link: string;
   Details: string;
   MagnetUri: string | null;
+  FallbackLink?: string;
   InfoHash: string | null;
   Size: number;
   Seeders: number;

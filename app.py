@@ -10,6 +10,8 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 import requests
 import urllib.parse
+import bencode
+import hashlib
 from flask_caching import Cache
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -166,6 +168,7 @@ def enrich_results(data):
         else:
             # Clear it so the frontend knows we don't have a reliable magnet
             res['MagnetUri'] = None
+            res['FallbackLink'] = link
             
     return data
 
@@ -303,6 +306,50 @@ def search_bitmagnet(query, category=None, limit=200):
         print(f"⚠️ Bitmagnet query failed: {e}", file=sys.stderr)
         return []
 
+def search_magnetz(query, timeout=15):
+    """Query magnetz.eu API directly"""
+    try:
+        url = "https://magnetz.eu/api/magnets/search"
+        params = {'query': query, 'page': 1}
+        print(f"🔍 Searching Magnetz: {url}", file=sys.stderr, flush=True)
+        
+        response = http_session.get(url, params=params, timeout=timeout)
+        if response.status_code != 200:
+            print(f"⚠️ Magnetz returned {response.status_code}", file=sys.stderr)
+            return []
+            
+        data = response.json()
+        items = data.get('data', [])
+        
+        results = []
+        tracker_query = "&".join([f"tr={urllib.parse.quote(t)}" for t in PUBLIC_TRACKERS])
+        
+        for item in items:
+            magnet = item.get('magnet_link')
+            if magnet and 'tr=' not in magnet:
+                magnet = f"{magnet}&{tracker_query}"
+                
+            results.append({
+                'Id': f"mz_{item.get('sqid', '')}",
+                'Title': item.get('name', 'Unknown'),
+                'Size': item.get('size', 0),
+                'Seeders': int(item.get('seeders') or 0),
+                'Peers': int(item.get('leechers') or 0),
+                'PublishDate': item.get('created_at', ''),
+                'MagnetUri': magnet,
+                'Indexer': 'Magnetz',
+                'CategoryDesc': 'All',
+                'Category': [8000],
+                'Details': item.get('web_url'),
+                'InfoHash': item.get('info_hash', '')
+            })
+            
+        print(f"🧲 Magnetz returned {len(results)} results", file=sys.stderr)
+        return results
+    except Exception as e:
+        print(f"⚠️ Magnetz search error: {e}", file=sys.stderr)
+        return []
+
 def search_jackett(query, category=None, timeout=20):
     """Wrapper to search Jackett with strict timeout"""
     try:
@@ -375,6 +422,47 @@ def search_jackett(query, category=None, timeout=20):
     
     return []
 
+@app.route('/api/resolve_magnet', methods=['GET'])
+def resolve_magnet():
+    url = request.args.get('url')
+    title = request.args.get('title', 'download')
+    if not url:
+        return jsonify({'error': 'No URL provided'}), 400
+    
+    try:
+        resp = http_session.get(url, timeout=10, verify=False)
+        if resp.status_code == 200:
+            # 1. Try scanning HTML for magnet links
+            try:
+                import re
+                content_text = resp.text
+                # Look for magnet link. Note: btih can be 32 (base32) or 40 (hex) chars.
+                magnet_match = re.search(r'(magnet:\?xt=urn:btih:[a-zA-Z0-9]{32,40}[^"\'\s<]*)', content_text)
+                if magnet_match:
+                    magnet = magnet_match.group(1)
+                    tracker_query = "&".join([f"tr={urllib.parse.quote(t)}" for t in PUBLIC_TRACKERS])
+                    if 'tr=' not in magnet:
+                        magnet = f"{magnet}&{tracker_query}"
+                    return jsonify({'magnet': magnet})
+            except Exception as e:
+                print(f"⚠️ Regex scrape error: {e}", file=sys.stderr)
+
+            # 2. Fall back to parsing as .torrent file
+            try:
+                data = bencode.bdecode(resp.content)
+                if b'info' in data:
+                    info_hash = hashlib.sha1(bencode.bencode(data[b'info'])).hexdigest()
+                    tracker_query = "&".join([f"tr={urllib.parse.quote(t)}" for t in PUBLIC_TRACKERS])
+                    magnet = f"magnet:?xt=urn:btih:{info_hash}&dn={urllib.parse.quote(title)}&{tracker_query}"
+                    return jsonify({'magnet': magnet})
+            except Exception:
+                pass # Not a valid bencode file
+                
+        return jsonify({'error': 'Failed to resolve torrent file or find magnet link'}), 400
+    except Exception as e:
+        print(f"⚠️ Resolve magnet error: {e}", file=sys.stderr)
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/search', methods=['GET'])
 @cache.cached(timeout=300, query_string=True)
 def search_torrents():
@@ -403,14 +491,16 @@ def search_torrents():
 
     jackett_results = []
     bitmagnet_results = []
+    magnetz_results = []
     errors = []
 
-    # Parallel Execution: Search both sources concurrently
-    with ThreadPoolExecutor(max_workers=2) as executor:
+    # Parallel Execution: Search all sources concurrently
+    with ThreadPoolExecutor(max_workers=3) as executor:
         future_jackett = executor.submit(search_jackett, query, category, timeout=60)
         future_bitmagnet = executor.submit(search_bitmagnet, query, category, limit=100)
+        future_magnetz = executor.submit(search_magnetz, query, timeout=15)
         
-        # Wait for both to complete (or fail/timeout internally)
+        # Wait for all to complete (or fail/timeout internally)
         try:
             jackett_results = future_jackett.result()
         except Exception as e:
@@ -423,6 +513,12 @@ def search_torrents():
             print(f"⚠️ Bitmagnet execution error: {e}", file=sys.stderr)
             errors.append(f"Bitmagnet: {e}")
 
+        try:
+            magnetz_results = future_magnetz.result()
+        except Exception as e:
+            print(f"⚠️ Magnetz execution error: {e}", file=sys.stderr)
+            errors.append(f"Magnetz: {e}")
+
     # --- 3. MERGE & DEDUPLICATE ---
     seen_hashes = set()
     final_results = []
@@ -433,6 +529,14 @@ def search_torrents():
         if h and h not in seen_hashes:
             seen_hashes.add(h)
             final_results.append(r)
+            
+    # Add Magnetz results
+    for r in magnetz_results:
+        h = (r.get('InfoHash') or '').lower()
+        if not h or h not in seen_hashes:
+            final_results.append(r)
+            if h:
+                seen_hashes.add(h)
     
     # Add Jackett results (skip duplicates)
     for r in jackett_results:
@@ -442,7 +546,7 @@ def search_torrents():
             if h:
                 seen_hashes.add(h)
     
-    print(f"🔀 Merged: {len(bitmagnet_results)} Bitmagnet + {len(jackett_results)} Jackett = {len(final_results)} total", file=sys.stderr)
+    print(f"🔀 Merged: {len(bitmagnet_results)} Bitmagnet + {len(magnetz_results)} Magnetz + {len(jackett_results)} Jackett = {len(final_results)} total", file=sys.stderr)
 
     # --- 4. RELEVANCE FILTERING --- (Filtering applied to ALL results)
     if query and final_results:
