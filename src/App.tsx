@@ -18,6 +18,7 @@ function App() {
     const [sortConfig, setSortConfig] = useState<{ key: any, direction: 'ascending' | 'descending' | null }>({ key: null, direction: 'ascending' });
     const [currentPage, setCurrentPage] = useState(1);
     const [abortController, setAbortController] = useState<AbortController | null>(null);
+    const [showCategories, setShowCategories] = useState(false);
 
     useEffect(() => {
         fetchCategories();
@@ -180,12 +181,24 @@ function App() {
                                     isLoading={isLoading}
                                     disabled={isLoading}
                                 />
-                                <CategoryFilter
-                                    categories={categories}
-                                    selectedCategory={selectedCategory}
-                                    onCategoryChange={setSelectedCategory}
+                                <button
+                                    onClick={() => setShowCategories(!showCategories)}
                                     disabled={isLoading}
-                                />
+                                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-slate-300 rounded-full text-sm font-medium hover:bg-slate-700 border border-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-fit"
+                                >
+                                    <span>Categories</span>
+                                    {selectedCategory && (
+                                        <span className="text-sky-400">• {categories.find(c => c.id === selectedCategory)?.name}</span>
+                                    )}
+                                </button>
+                                {showCategories && (
+                                    <CategoryFilter
+                                        categories={categories}
+                                        selectedCategory={selectedCategory}
+                                        onCategoryChange={setSelectedCategory}
+                                        disabled={isLoading}
+                                    />
+                                )}
                             </div>
                         </div>
 
