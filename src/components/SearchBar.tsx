@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { SearchIcon, SpinnerIcon } from './Icons';
+import { SearchIcon, SpinnerIcon, CloseIcon } from './Icons';
 
 interface SearchBarProps {
   query: string;
@@ -26,12 +26,21 @@ const SearchBar: React.FC<SearchBarProps> = ({ query, setQuery, onSearch, isLoad
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={disabled ? "Please configure settings first" : "Search for movies, series, games..."}
-        className="w-full pl-5 pr-16 md:pr-32 py-4 bg-slate-800 border border-slate-700 rounded-full text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all duration-300 disabled:bg-slate-800/50 disabled:cursor-not-allowed"
+        className="w-full pl-5 pr-32 md:pr-40 py-4 bg-slate-800 border border-slate-700 rounded-full text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all duration-300 disabled:bg-slate-800/50 disabled:cursor-not-allowed"
         disabled={isLoading || disabled}
       />
+      {query && !isLoading && (
+        <button
+          onClick={() => setQuery('')}
+          className="absolute right-24 md:right-32 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-200 transition-colors"
+          aria-label="Clear search"
+        >
+          <CloseIcon />
+        </button>
+      )}
       <button
         onClick={() => onSearch()}
-        disabled={isLoading || disabled}
+        disabled={isLoading || disabled || !query}
         className="absolute right-2 top-1/2 -translate-y-1/2 h-12 px-6 flex items-center justify-center bg-sky-600 text-white rounded-full font-semibold hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-sky-500 disabled:bg-slate-600 disabled:cursor-not-allowed transition-all duration-300"
       >
         {isLoading ? (

@@ -139,24 +139,20 @@ function App() {
 
                     <main>
                         <div className="max-w-3xl mx-auto mb-8">
-                            <div className="flex flex-col md:flex-row gap-4 items-center">
-                                <div className="w-full md:flex-grow">
-                                    <SearchBar
-                                        query={query}
-                                        setQuery={setQuery}
-                                        onSearch={handleSearch}
-                                        isLoading={isLoading}
-                                        disabled={isLoading}
-                                    />
-                                </div>
-                                <div className="w-full md:w-64">
-                                    <CategoryFilter
-                                        categories={categories}
-                                        selectedCategory={selectedCategory}
-                                        onCategoryChange={setSelectedCategory}
-                                        disabled={isLoading}
-                                    />
-                                </div>
+                            <div className="flex flex-col gap-4">
+                                <SearchBar
+                                    query={query}
+                                    setQuery={setQuery}
+                                    onSearch={handleSearch}
+                                    isLoading={isLoading}
+                                    disabled={isLoading}
+                                />
+                                <CategoryFilter
+                                    categories={categories}
+                                    selectedCategory={selectedCategory}
+                                    onCategoryChange={setSelectedCategory}
+                                    disabled={isLoading}
+                                />
                             </div>
                         </div>
 

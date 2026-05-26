@@ -1,6 +1,5 @@
 import React from 'react';
 import type { Category } from '../types';
-import { ChevronDownIcon } from './Icons';
 
 interface CategoryFilterProps {
   categories: Category[];
@@ -11,23 +10,33 @@ interface CategoryFilterProps {
 
 const CategoryFilter: React.FC<CategoryFilterProps> = ({ categories, selectedCategory, onCategoryChange, disabled }) => {
   return (
-    <div className="relative w-full">
-      <select
-        value={selectedCategory}
-        onChange={(e) => onCategoryChange(e.target.value)}
-        disabled={disabled || categories.length === 0}
-        className="w-full h-full px-5 py-4 bg-slate-800 border border-slate-700 rounded-full text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all duration-300 appearance-none pr-12 disabled:bg-slate-800/50 disabled:cursor-not-allowed"
-        aria-label="Select Category"
-      >
-        <option value="">All Categories</option>
+    <div className="w-full">
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent">
+        <button
+          onClick={() => onCategoryChange('')}
+          disabled={disabled}
+          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+            selectedCategory === ''
+              ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/30'
+              : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 border border-slate-700'
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          All
+        </button>
         {categories.map((cat) => (
-          <option key={cat.id} value={cat.id}>
+          <button
+            key={cat.id}
+            onClick={() => onCategoryChange(cat.id)}
+            disabled={disabled}
+            className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+              selectedCategory === cat.id
+                ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/30'
+                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 border border-slate-700'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
             {cat.name}
-          </option>
+          </button>
         ))}
-      </select>
-      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
-        <ChevronDownIcon />
       </div>
     </div>
   );
