@@ -149,12 +149,12 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
     };
 
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(magnetUri).catch(err => {
+      navigator.clipboard.writeText(finalMagnet).catch(err => {
         console.error('Failed to copy magnet link with Clipboard API, falling back.', err);
-        fallbackCopy(magnetUri);
+        fallbackCopy(finalMagnet);
       });
     } else {
-      fallbackCopy(magnetUri);
+      fallbackCopy(finalMagnet);
     }
 
     // Auto-reset the "Copied!" state after 1.5 seconds
