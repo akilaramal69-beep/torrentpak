@@ -128,6 +128,8 @@ def enrich_results(data):
     results = data.get('Results', [])
     tracker_query = "&".join([f"tr={urllib.parse.quote(t)}" for t in PUBLIC_TRACKERS])
     
+    enriched_results = []
+    
     for idx, res in enumerate(results):
         # Safety check: Ensure item is a dict
         if not isinstance(res, dict):
@@ -165,11 +167,10 @@ def enrich_results(data):
                 sep = '&' if '?' in final_magnet else '?'
                 final_magnet = f"{final_magnet}{sep}{tracker_query}"
             res['MagnetUri'] = final_magnet
-        else:
-            # Clear it so the frontend knows we don't have a reliable magnet
-            res['MagnetUri'] = None
-            res['FallbackLink'] = link
+            enriched_results.append(res)
+        # Skip results without magnet links - don't show them at all
             
+    data['Results'] = enriched_results
     return data
 
 # Bitmagnet GraphQL - Direct query for accurate seeder/leecher counts
