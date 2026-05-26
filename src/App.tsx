@@ -17,6 +17,7 @@ function App() {
     const [error, setError] = useState('');
     const [sortConfig, setSortConfig] = useState<{ key: any, direction: 'ascending' | 'descending' | null }>({ key: null, direction: 'ascending' });
     const [currentPage, setCurrentPage] = useState(1);
+    const [abortController, setAbortController] = useState<AbortController | null>(null);
 
     useEffect(() => {
         fetchCategories();
@@ -64,6 +65,14 @@ function App() {
         const searchTerms = forcedQuery || query;
         if (!searchTerms.trim()) return;
 
+        // Cancel any ongoing search
+        if (abortController) {
+            abortController.abort();
+        }
+
+        const controller = new AbortController();
+        setAbortController(controller);
+
         setIsLoading(true);
         setError('');
         setCurrentPage(1);
@@ -75,7 +84,9 @@ function App() {
         }, 1500);
 
         try {
-            const response = await fetch(`/api/search?q=${encodeURIComponent(searchTerms)}&category=${selectedCategory}`);
+            const response = await fetch(`/api/search?q=${encodeURIComponent(searchTerms)}&category=${selectedCategory}`, {
+                signal: controller.signal
+            });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error || `Search failed (Status ${response.status})`);
@@ -89,12 +100,31 @@ function App() {
             setResults(sortedResults as any);
             setHasSearched(true);
         } catch (err: any) {
-            setError(err.message || 'Something went wrong');
-            console.error('Search error:', err);
+            // Don't show error if search was cancelled
+            if (err.name !== 'AbortError') {
+                // Don't show "failed to fetch" or network errors
+                const errorMessage = err.message || '';
+                if (!errorMessage.toLowerCase().includes('failed to fetch') && 
+                    !errorMessage.toLowerCase().includes('network error') &&
+                    !errorMessage.toLowerCase().includes('fetch')) {
+                    setError(errorMessage);
+                }
+                console.error('Search error:', err);
+            }
         } finally {
             clearInterval(messageInterval);
             setIsLoading(false);
+            setAbortController(null);
         }
+    };
+
+    const handleCancelSearch = () => {
+        if (abortController) {
+            abortController.abort();
+            setAbortController(null);
+        }
+        setIsLoading(false);
+        setError('');
     };
 
     const requestSort = (key: any) => {
@@ -146,6 +176,7 @@ function App() {
                                     query={query}
                                     setQuery={setQuery}
                                     onSearch={handleSearch}
+                                    onCancel={handleCancelSearch}
                                     isLoading={isLoading}
                                     disabled={isLoading}
                                 />

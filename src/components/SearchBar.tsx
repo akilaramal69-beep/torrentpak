@@ -6,11 +6,12 @@ interface SearchBarProps {
   query: string;
   setQuery: (query: string) => void;
   onSearch: () => void;
+  onCancel: () => void;
   isLoading: boolean;
   disabled: boolean;
 }
 
-const SearchBar: React.FC<SearchBarProps> = ({ query, setQuery, onSearch, isLoading, disabled }) => {
+const SearchBar: React.FC<SearchBarProps> = ({ query, setQuery, onSearch, onCancel, isLoading, disabled }) => {
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
@@ -38,23 +39,23 @@ const SearchBar: React.FC<SearchBarProps> = ({ query, setQuery, onSearch, isLoad
           <CloseIcon />
         </button>
       )}
-      <button
-        onClick={() => onSearch()}
-        disabled={isLoading || disabled || !query}
-        className="absolute right-2 top-1/2 -translate-y-1/2 h-12 px-6 flex items-center justify-center bg-sky-600 text-white rounded-full font-semibold hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-sky-500 disabled:bg-slate-600 disabled:cursor-not-allowed transition-all duration-300"
-      >
-        {isLoading ? (
-          <>
-            <SpinnerIcon />
-            <span className="hidden md:inline ml-2">Searching...</span>
-          </>
-        ) : (
-          <>
-            <SearchIcon />
-            <span className="hidden md:inline ml-2">Search</span>
-          </>
-        )}
-      </button>
+      {isLoading ? (
+        <button
+          onClick={onCancel}
+          className="absolute right-2 top-1/2 -translate-y-1/2 h-12 px-6 flex items-center justify-center bg-red-600 text-white rounded-full font-semibold hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-red-500 transition-all duration-300"
+        >
+          Cancel
+        </button>
+      ) : (
+        <button
+          onClick={() => onSearch()}
+          disabled={disabled || !query}
+          className="absolute right-2 top-1/2 -translate-y-1/2 h-12 px-6 flex items-center justify-center bg-sky-600 text-white rounded-full font-semibold hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-sky-500 disabled:bg-slate-600 disabled:cursor-not-allowed transition-all duration-300"
+        >
+          <SearchIcon />
+          <span className="hidden md:inline ml-2">Search</span>
+        </button>
+      )}
     </div>
   );
 };
