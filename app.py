@@ -496,28 +496,31 @@ def search_torrents():
 
     # Parallel Execution: Search all sources concurrently
     with ThreadPoolExecutor(max_workers=3) as executor:
-        future_jackett = executor.submit(search_jackett, query, category, timeout=60)
-        future_bitmagnet = executor.submit(search_bitmagnet, query, category, limit=100)
-        future_magnetz = executor.submit(search_magnetz, query, timeout=15)
+        future_jackett = executor.submit(search_jackett, query, category, 60)
+        future_bitmagnet = executor.submit(search_bitmagnet, query, category, 100)
+        future_magnetz = executor.submit(search_magnetz, query, 15)
         
-        # Wait for all to complete (or fail/timeout internally)
-        try:
-            jackett_results = future_jackett.result()
-        except Exception as e:
-            print(f"⚠️ Jackett execution error: {e}", file=sys.stderr)
-            errors.append(f"Jackett: {e}")
-            
-        try:
-            bitmagnet_results = future_bitmagnet.result()
-        except Exception as e:
-            print(f"⚠️ Bitmagnet execution error: {e}", file=sys.stderr)
-            errors.append(f"Bitmagnet: {e}")
+        import time as _time
+        _deadline = _time.time() + 25  # 25s hard wall-clock limit for all sources
 
-        try:
-            magnetz_results = future_magnetz.result()
-        except Exception as e:
-            print(f"⚠️ Magnetz execution error: {e}", file=sys.stderr)
-            errors.append(f"Magnetz: {e}")
+        # Wait for all futures simultaneously, each with a shrinking timeout
+        for future, name, results_list in [
+            (future_jackett, 'Jackett', 'jackett'),
+            (future_bitmagnet, 'Bitmagnet', 'bitmagnet'),
+            (future_magnetz, 'Magnetz', 'magnetz'),
+        ]:
+            remaining = max(0.5, _deadline - _time.time())
+            try:
+                result = future.result(timeout=remaining)
+                if name == 'Jackett':
+                    jackett_results = result
+                elif name == 'Bitmagnet':
+                    bitmagnet_results = result
+                else:
+                    magnetz_results = result
+            except Exception as e:
+                print(f"⚠️ {name} execution error: {e}", file=sys.stderr)
+                errors.append(f"{name}: {e}")
 
     # --- 3. MERGE & DEDUPLICATE ---
     seen_hashes = set()
